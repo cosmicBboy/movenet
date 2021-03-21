@@ -4,7 +4,7 @@ This is a log of different approaches, techniques, and other thoughts relating
 to the project as it evolves.
 
 **Note:** _For the best viewing experience, we recommend installing the_
-_[github+mermaid browser extension](https://github.com/BackMarket/github-mermaid-extension)_
+_[markdown diagrams browser extension](https://github.com/marcozaccari/markdown-diagrams-browser-extension)_
 _to render all of the diagrams_
 
 ## References
@@ -25,11 +25,11 @@ movement - to translate that motion into music.
 
 ```mermaid
 graph LR;
-    vid_stream([Video Stream])-->vid_enc[Video Encoder];
-    vid_enc-->vid_repr([Video Representation]);
-    vid_repr-->audio_dec[Audio Decoder];
-    audio_dec-->audio_repr[Audio Representation];
-    audio_repr-->audio_wav[Audio Waveform];
+    vid_stream([Video Stream]) --> vid_enc[Video Encoder];
+    vid_enc --> vid_repr([Video Representation]);
+    vid_repr --> audio_dec[Audio Decoder];
+    audio_dec --> audio_repr[Audio Representation];
+    audio_repr --> audio_wav[Audio Waveform];
 ```
 
 The prior research enumerated in the [resources](./README.md#resources) section
