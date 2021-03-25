@@ -48,6 +48,10 @@ system.
 - [Learning to Dance: A graph convolutional adversarial network to generate realistic dance motions from audio](https://arxiv.org/pdf/2011.12999v2.pdf)
 - [Weakly-Supervised Deep Recurrent Neural Networks for Basic Dance Step Generation](https://arxiv.org/pdf/1807.01126v3.pdf)
 - [MagnaTagATune Dataset](https://mirg.city.ac.uk/codeapps/the-magnatagatune-dataset)
+- [OpenAI Jukebox](https://openai.com/blog/jukebox/)
+   - [paper](https://arxiv.org/abs/2005.00341)
+   - [code](https://github.com/openai/jukebox/)
+- [OpenAI Musenet](https://openai.com/blog/musenet/)
 
 
 ## Download the Datasets
