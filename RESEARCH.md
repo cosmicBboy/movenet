@@ -5,7 +5,8 @@ to the project as it evolves.
 
 **Note:** _For the best viewing experience, we recommend installing the_
 _[markdown diagrams browser extension](https://github.com/marcozaccari/markdown-diagrams-browser-extension)_
-_to render all of the diagrams_
+_to render all of the diagrams_ and _[mathjax (chrome)](https://github.com/orsharir/github-mathjax)_
+for math rendering.
 
 ## References
 
@@ -105,47 +106,41 @@ approach that:
 WaveNet is an autoregressive model that operates directly on raw audio waveform
 in the following factorization:
 
-```
-p(x) = cumulative_product( p(x_t | x_1, ..., x_{t - 1}) ) for t = 1 to T
-```
+$ p(x) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1}) $
 
 This is an important aspect of the architecture to preserve because not only do
 we want to generate music from human dance, we also want to produce music that
 maintains thematic consistency and coherence over relatively long time spans.
 
 We also want to condition the sampled audio value based on the previous dance
-pose, so we have a second timeseries `h_t`, which potentially has a higher or
+pose, so we have a second timeseries $h_t$, which potentially has a higher or
 lower sampling frequency than the audio signal.
 
-```
-p(x | h) = cumulative_product( p(x_t | x_1, ..., x_{t - 1}, h_t, ..., h_{t - 1}) ) for t = 1 to T
-```
+$ p(x | h) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1}, h_t, ..., h_{t - 1}) $
 
-We can transform `h_t` using a CNN with pooling to downsample the video framerate,
+We can transform $h_t$ using a CNN with pooling to downsample the video framerate,
 if the video sample frequency is higher than the audio signal, or a transposed
 convolutional network to upsample the video sample frequency if the converse is
-true. Ultimately we'll want to have a sequence `y = s(h)` with the same
-resolution as the audio signal, where `s` can be a learnable up/downsampling
+true. Ultimately we'll want to have a sequence $y = \phi(h)$ with the same
+resolution as the audio signal, where $\phi$ can be a learnable up/downsampling
 convolutional filter or a deterministic re-sampling function that wraps a
 third-party video frame resampling library.
 
 ### Activation Function
 
 We'll use the gated activation units using in the [WaveNet][wave_net] paper,
-conditioned on the second time series `y` (see section 2.5):
+conditioned on the second time series $y$ (see section 2.5):
 
-```
-z = tanh(W_{f, k} * x + V_{f, k} * y) . sigmoid(W_{g, k} * x + V_{g, k} * y)
-```
+$z = tanh(W_{f, k} * x + V_{f, k}^T h)\ \odot\ \sigma(W_{g, k} * x + V_{g, k} * y)$
 
 Where:
-- `z` is the activation
-- `W` is the learnable audio convolutional filter
-- `x` is the audio signal
-- `V` is the learnable video convolutional filter
-- `y` is the up/downsampled video signal
-- `k` is the convolutional layer index
-- `f` and `g` denote filter and gate, respectively.
+- $z$ is the activation
+- $W$ is the learnable audio convolutional filter
+- $x$ is the audio signal
+- $V$ is the learnable video convolutional filter
+- $y$ is the up/downsampled video signal
+- $k$ is the convolutional layer index
+- $f$ and $g$ denote filter and gate, respectively.
 
 ### Data Processing
 
@@ -163,15 +158,14 @@ the [Wavenet][wave_net] paper (section 2.2) to quantize the 16-bit integer
 values of raw audio into 256 possible values with the mu-law companding
 transformation:
 
-```
-f(x_t) = sign(x_t) ( ln ( 1 + mu|x_t| ) / ln (1 + mu))
-```
+$f(x_t) = sign(x_t) \frac{ln(1 + \mu |x_t|)}{ln(1 + \mu)}$
 
-Where `-1 < x_t < 1` and `mu = 255`.
+Where $-1 < x_t < 1$ and $\mu = 255$.
 
 ### Dataset
 
-At a high level, the dataset for this project will look like the following:
+At a high level, the types that we can use to compose the dataset for this
+project will look like the following:
 
 ```
 AudioSample = Array[256 x 1]
