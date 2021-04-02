@@ -79,7 +79,7 @@ of video input. The hope is that that same exact movement might produce
 qualitatively different sounds.
 
 VAE methods are a potential direction to go once the baseline has been
-established.
+established. Other work to consider is [Jukebox][juke_box].
 
 ## WaveNet: Implementing a Baseline Model for Dance2Wave
 
