@@ -1,4 +1,4 @@
-name: dance2wave
+name: movenet
 channels:
   - conda-forge
   - pytorch

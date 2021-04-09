@@ -1,1 +1,1 @@
-"""Train the dance2wave model."""
+"""Train the movenet model."""

@@ -1,11 +1,11 @@
-# dance2wave
+# movenet
 
 Generate raw audio from dance videos
 
 
 ## Background
 
-`dance2wave` is a research project for generating music from dance. The idea
+`movenet` is a research project for generating music from dance. The idea
 is to turn the human body into an instrument, converting sequences of images
 into raw audio waveforms.
 
@@ -23,9 +23,9 @@ This repo uses [miniconda](https://docs.conda.io/en/latest/miniconda.html)
 as a virtual environment.
 
 ```
-conda create -n dance2wave python=3.9
-conda activate dance2wave
-conda env update -n dance2wave -f environment.yml
+conda create -n movenet python=3.9
+conda activate movenet
+conda env update -n movenet -f environment.yml
 ```
 
 Install [youtube-dl](https://github.com/ytdl-org/youtube-dl) depending on your

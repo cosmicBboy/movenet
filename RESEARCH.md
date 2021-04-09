@@ -27,7 +27,7 @@ for math rendering.
 
 **03/11/2021**
 
-The goal of the `dance2wave` is to create an instrument from human body
+The goal of the `movenet` is to create an instrument from human body
 movement - to translate that motion into music.
 
 ```mermaid
@@ -81,7 +81,7 @@ qualitatively different sounds.
 VAE methods are a potential direction to go once the baseline has been
 established. Other work to consider is [Jukebox][juke_box].
 
-## WaveNet: Implementing a Baseline Model for Dance2Wave
+## WaveNet: Implementing a Baseline Model for movenet
 
 Unlike other music generation systems like [WaveNet][wave_net] or
 [Jukebox][juke_box], we want to condition the generated output on a sequence
