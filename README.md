@@ -23,9 +23,9 @@ This repo uses [miniconda](https://docs.conda.io/en/latest/miniconda.html)
 as a virtual environment.
 
 ```
-conda create -n dance2wave python=3.8
+conda create -n dance2wave python=3.9
 conda activate dance2wave
-conda update -n dance2wave -f environment.yml
+conda env update -n dance2wave -f environment.yml
 ```
 
 Install [youtube-dl](https://github.com/ytdl-org/youtube-dl) depending on your

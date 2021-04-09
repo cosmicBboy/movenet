@@ -1,7 +1,7 @@
 """Create audio dataset."""
 
 
-def audio_to_tensor():
+def wav_to_tensor():
     # see https://librosa.org/doc/latest/index.html
     pass
 
@@ -12,5 +12,4 @@ def quantize_audio():
 
 
 if __name__ == "__main__":
-    from argparse import ArgumentParser
     pass

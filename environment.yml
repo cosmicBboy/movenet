@@ -5,3 +5,5 @@ channels:
 dependencies:
   - opencv
   - pytorch
+  - torchvision
+  - torchaudio
