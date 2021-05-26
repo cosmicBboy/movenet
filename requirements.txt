@@ -1,0 +1,8 @@
+av
+numpy
+opencv-python
+torch
+torchvision
+torchaudio
+typeguard
+torchtyping

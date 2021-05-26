@@ -25,7 +25,7 @@ as a virtual environment.
 ```
 conda create -n movenet python=3.9
 conda activate movenet
-conda env update -n movenet -f environment.yml
+conda env update -n movenet -f .environment.yml
 ```
 
 Install [youtube-dl](https://github.com/ytdl-org/youtube-dl) depending on your
