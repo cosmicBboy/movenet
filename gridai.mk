@@ -40,6 +40,7 @@ clean:
 
 test-run:
 	grid train \
-		--grid_datastore_name kinetics-debug \
-		--grid_instance_type t2.medium \
+		--g_datastore_name kinetics-debug \
+		--g_datastore_mount_dir /kinetics_dataset \
+		--g_instance_type t2.medium \
 		gridai_test.py
