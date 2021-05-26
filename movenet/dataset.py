@@ -1,7 +1,12 @@
 """Create dataset for modeling."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, TypedDict
+from typing import Any, Dict
+
+try:
+    from typing import TypedDict
+except:
+    from typing_extensions import TypedDict
 
 import torch
 import torchaudio

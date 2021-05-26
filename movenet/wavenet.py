@@ -52,7 +52,7 @@ class WaveNet(nn.Module):
         self.dense_conv = DenseConv(input_channels)
 
     @property
-    @functools.lru_cache
+    @functools.lru_cache(maxsize=None)
     def receptive_fields(self):
         return sum(self.residual_conv_stack.dilations)
 

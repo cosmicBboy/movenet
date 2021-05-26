@@ -1,5 +1,6 @@
 """Train the movenet model."""
 
+import logging
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List
@@ -13,6 +14,9 @@ from torchtyping import TensorType
 
 from movenet import dataset
 from movenet.wavenet import WaveNet
+
+
+logger = logging.getLogger(__file__)
 
 
 @dataclass
@@ -93,7 +97,9 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
         loss = loss.data.item()
         optimizer.step()
 
-        print(f"[step {i}] {loss=:0.08f}, {grad_norm=:0.08f}")
+        logger.info(
+            f"[step {i}] loss={loss:0.08f}, grad_norm={grad_norm:0.08f}"
+        )
         writer.add_scalar("loss/train", loss, i)
         writer.add_scalar("grad_norm", grad_norm, i)
     return model
@@ -106,6 +112,11 @@ if __name__ == "__main__":
     from pathlib import Path
     from datetime import datetime
 
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="[%(levelname)s] %(asctime)s:: %(message)s",
+    )
+
     MAX_RETRIES = 10
 
     parser = argparse.ArgumentParser()
@@ -117,6 +128,8 @@ if __name__ == "__main__":
     parser.add_argument("--layer_size", type=int, default=3)
     parser.add_argument("--stack_size", type=int, default=3)
     args = parser.parse_args()
+
+    logger.info(f"starting training run")
 
     model_root = Path("models")
     config = TrainingConfig(
@@ -134,14 +147,14 @@ if __name__ == "__main__":
     batch_fps = [
         str(file_name) for file_name in training_data_path.glob("*.mp4")
     ]
-    print(f"starting training run with config {config}")
-    print(f"files: {batch_fps}")
+    logger.info(f"config: {config}")
+    logger.info(f"files: {batch_fps}")
 
     # make sure video files can be loaded
     for _ in range(MAX_RETRIES):
         try:
             dataset.load_video(batch_fps[0])
-            print(f"video loading success")
+            logger.info(f"video loading success")
             break
         except:
             time.sleep(1)

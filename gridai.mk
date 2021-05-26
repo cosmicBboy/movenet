@@ -7,6 +7,16 @@ kinetics-debug.tar.gz:
 		valid/breakdancing/3ob3NvTp-YA.mp4 \
 		valid/breakdancing/K-81lIy6PoI.mp4
 
+datasets/kinetics_debug:
+	@mkdir -p datasets/kinetics_debug/train/breakdancing
+	mkdir -p datasets/kinetics_debug/valid/breakdancing
+	cp datasets/kinetics/train/breakdancing/zkyRFux7BWc.mp4 datasets/kinetics_debug/train/breakdancing
+	cp datasets/kinetics/train/breakdancing/eB4wwvnXwrI.mp4 datasets/kinetics_debug/train/breakdancing
+	cp datasets/kinetics/train/breakdancing/MEguK5_ding.mp4 datasets/kinetics_debug/train/breakdancing
+	cp datasets/kinetics/valid/breakdancing/_OGG4vXzHSA.mp4 datasets/kinetics_debug/valid/breakdancing
+	cp datasets/kinetics/valid/breakdancing/3ob3NvTp-YA.mp4 datasets/kinetics_debug/valid/breakdancing
+	cp datasets/kinetics/valid/breakdancing/K-81lIy6PoI.mp4 datasets/kinetics_debug/valid/breakdancing
+
 kinetics-breakdancing.tar.gz:
 	tar -C datasets/kinetics -cvzf kinetics-breakdancing.tar.gz \
 		train/breakdancing valid/breakdancing
@@ -20,8 +30,8 @@ kinetics.tar.gz:
 	cp -R datasets/kinetics/valid .kinetics/
 
 .PHONY: create-kinetics-debug
-create-kinetics-debug: kinetics-debug.tar.gz
-	grid datastores create --source kinetics-debug.tar.gz --name kinetics-debug
+create-kinetics-debug: datasets/kinetics_debug
+	grid datastores create --source datasets/kinetics_debug --name kinetics-debug
 
 .PHONY: create-kinetics-breakdancing
 create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
@@ -47,3 +57,10 @@ train-debug:
 		movenet/trainer.py \
 		--dataset /kinetics_debug \
 		--n_training_steps 10
+
+session-debug:
+	grid session create \
+		--g_instance_type t2.medium \
+		--g_datastore_name kinetics-debug \
+		--g_datastore_version 3 \
+		--g_datastore_mount_dir /kinetics_debug
