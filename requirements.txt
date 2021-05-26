@@ -1,6 +1,8 @@
+-e .
 av
 numpy
 opencv-python
+tensorboard
 torch
 torchvision
 torchaudio

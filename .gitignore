@@ -4,6 +4,8 @@ kinetics-downloader
 datasets/*
 models/*
 .kinetics/*
+*.tar.gz
+training_logs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

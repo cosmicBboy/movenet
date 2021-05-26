@@ -38,9 +38,11 @@ clean:
 		kinetics.tar.gz \
 		.kinetics
 
-test-run:
+train-debug:
 	grid train \
 		--g_datastore_name kinetics-debug \
-		--g_datastore_mount_dir /kinetics_dataset \
+		--g_datastore_mount_dir /kinetics_debug \
 		--g_instance_type t2.medium \
-		gridai_test.py
+		movenet/trainer.py \
+		--dataset /kinetics_debug \
+		--n-training-steps 10

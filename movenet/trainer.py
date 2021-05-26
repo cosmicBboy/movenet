@@ -1,11 +1,13 @@
 """Train the movenet model."""
 
 from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import List
 
 import torch
 import torch.optim
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 from torchaudio.functional import mu_law_encoding, mu_law_decoding
 from torchtyping import TensorType
 
@@ -28,6 +30,7 @@ class TrainingConfig:
     learning_rate: float = 0.0002
     weight_decay: float = 0.0
     n_training_steps: int = 100
+    tensorboard_dir: str = "tensorboard_logs"
 
 
 def one_hot_encode(audio, input_channels):
@@ -72,6 +75,7 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
         weight_decay=config.weight_decay,
     )
     # training loop
+    writer = SummaryWriter(config.tensorboard_dir)
     raw_data = [dataset.load_video(fp) for fp in batch_fps]
     audio = make_batch(raw_data, config)
     for i in range(1, config.n_training_steps + 1):
@@ -85,38 +89,47 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
         for param in model.parameters():
             if param.grad is not None:
                 grad_norm += param.grad.data.norm(2).item() ** 2
-
         grad_norm = grad_norm ** 0.5
+        loss = loss.data.item()
         optimizer.step()
 
-        print(f"[step {i}] loss={loss.data.item():0.08f}, {grad_norm=:0.08f}")
+        print(f"[step {i}] {loss=:0.08f}, {grad_norm=:0.08f}")
+        writer.add_scalar("loss/train", loss, i)
+        writer.add_scalar("grad_norm", grad_norm, i)
     return model
 
 
 if __name__ == "__main__":
+    import argparse
     import json
     from pathlib import Path
     from datetime import datetime
 
-    data_root = Path("datasets") / "kinetics" / "train" / "breakdancing"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str)
+    parser.add_argument("--learning-rate", type=float, default=0.0003)
+    parser.add_argument("--n-training-steps", type=int, default=3)
+    parser.add_argument("--input-channels", type=int, default=16)
+    parser.add_argument("--residual-channels", type=int, default=16)
+    parser.add_argument("--layer-size", type=int, default=3)
+    parser.add_argument("--stack-size", type=int, default=3)
+    args = parser.parse_args()
+
     model_root = Path("models")
     config = TrainingConfig(
         model_config=ModelConfig(
-            input_channels=16,
-            residual_channels=16,
-            layer_size=3,
-            stack_size=3,
+            input_channels=args.input_channels,
+            residual_channels=args.residual_channels,
+            layer_size=args.layer_size,
+            stack_size=args.stack_size,
         ),
-        learning_rate=0.0003,
-        n_training_steps=3,
+        learning_rate=args.learning_rate,
+        n_training_steps=args.n_training_steps,
+        tensorboard_dir="training_logs"
     )
+    training_data_path = Path(args.dataset) / "train" / "breakdancing"
     batch_fps = [
-        str(data_root / file_name)
-        for file_name in [
-            "zkyRFux7BWc.mp4",
-            "eB4wwvnXwrI.mp4",
-            "MEguK5_ding.mp4",
-        ]
+        str(file_name) for file_name in training_data_path.glob("*.mp4")
     ]
     model = train_model(config, batch_fps)
     model_path = model_root / datetime.now().strftime("%Y%m%d%H%M%S")
