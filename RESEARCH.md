@@ -106,7 +106,7 @@ approach that:
 WaveNet is an autoregressive model that operates directly on raw audio waveform
 in the following factorization:
 
-$ p(x) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1}) $
+$p(x) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1})$
 
 This is an important aspect of the architecture to preserve because not only do
 we want to generate music from human dance, we also want to produce music that
@@ -116,7 +116,7 @@ We also want to condition the sampled audio value based on the previous dance
 pose, so we have a second timeseries $h_t$, which potentially has a higher or
 lower sampling frequency than the audio signal.
 
-$ p(x | h) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1}, h_t, ..., h_{t - 1}) $
+$p(x | h) = \prod_{t=1}^{T} p(x_t | x_1,... , x_{t - 1}, h_t, ..., h_{t - 1})$
 
 We can transform $h_t$ using a CNN with pooling to downsample the video framerate,
 if the video sample frequency is higher than the audio signal, or a transposed

@@ -3,6 +3,7 @@
 kinetics-downloader
 datasets/*
 models/*
+.kinetics/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
