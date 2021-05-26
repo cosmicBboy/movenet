@@ -45,4 +45,4 @@ train-debug:
 		--g_instance_type t2.medium \
 		movenet/trainer.py \
 		--dataset /kinetics_debug \
-		--n-training-steps 10
+		--n_training_steps 10

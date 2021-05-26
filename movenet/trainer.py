@@ -107,12 +107,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
-    parser.add_argument("--learning-rate", type=float, default=0.0003)
-    parser.add_argument("--n-training-steps", type=int, default=3)
-    parser.add_argument("--input-channels", type=int, default=16)
-    parser.add_argument("--residual-channels", type=int, default=16)
-    parser.add_argument("--layer-size", type=int, default=3)
-    parser.add_argument("--stack-size", type=int, default=3)
+    parser.add_argument("--learning_rate", type=float, default=0.0003)
+    parser.add_argument("--n_training_steps", type=int, default=3)
+    parser.add_argument("--input_channels", type=int, default=16)
+    parser.add_argument("--residual_channels", type=int, default=16)
+    parser.add_argument("--layer_size", type=int, default=3)
+    parser.add_argument("--stack_size", type=int, default=3)
     args = parser.parse_args()
 
     model_root = Path("models")
