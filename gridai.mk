@@ -42,6 +42,7 @@ train-debug:
 	grid train \
 		--g_datastore_name kinetics-debug \
 		--g_datastore_mount_dir /kinetics_debug \
+		--g_datastore_version 2 \
 		--g_instance_type t2.medium \
 		movenet/trainer.py \
 		--dataset /kinetics_debug \

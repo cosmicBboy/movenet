@@ -102,8 +102,11 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
 if __name__ == "__main__":
     import argparse
     import json
+    import time
     from pathlib import Path
     from datetime import datetime
+
+    MAX_RETRIES = 10
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
@@ -131,6 +134,19 @@ if __name__ == "__main__":
     batch_fps = [
         str(file_name) for file_name in training_data_path.glob("*.mp4")
     ]
+    print(f"starting training run with config {config}")
+    print(f"files: {batch_fps}")
+
+    # make sure video files can be loaded
+    for _ in range(MAX_RETRIES):
+        try:
+            dataset.load_video(batch_fps[0])
+            print(f"video loading success")
+            break
+        except:
+            time.sleep(1)
+            pass
+
     model = train_model(config, batch_fps)
     model_path = model_root / datetime.now().strftime("%Y%m%d%H%M%S")
     model_path.mkdir(exist_ok=True, parents=True)
