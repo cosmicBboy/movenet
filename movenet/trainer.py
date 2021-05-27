@@ -1,9 +1,10 @@
 """Train the movenet model."""
 
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
+from dataclasses_json import dataclass_json, config
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.optim
@@ -19,6 +20,7 @@ from movenet.wavenet import WaveNet
 logger = logging.getLogger(__file__)
 
 
+@dataclass_json
 @dataclass
 class ModelConfig:
     layer_size: int = 2
@@ -27,14 +29,22 @@ class ModelConfig:
     residual_channels: int = 512
 
 
+@dataclass_json
 @dataclass
 class TrainingConfig:
     model_config: ModelConfig = ModelConfig()
+    checkpoint_every: int = 25
     optimizer: str = "Adam"
     learning_rate: float = 0.0002
     weight_decay: float = 0.0
     n_training_steps: int = 100
-    tensorboard_dir: str = "tensorboard_logs"
+    pretrained_model_path: Optional[Path] = None
+    model_output_path: Path = field(
+        default="models", metadata=config(encoder=str, decoder=Path),
+    )
+    tensorboard_dir: Path = field(
+        default="tensorboard_logs", metadata=config(encoder=str, decoder=Path),
+    )
 
 
 def one_hot_encode(audio, input_channels):
@@ -102,6 +112,17 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
         )
         writer.add_scalar("loss/train", loss, i)
         writer.add_scalar("grad_norm", grad_norm, i)
+
+        if config.checkpoint_every % i == 0:
+            logger.info(f"creating checkpoint at step {i}")
+            fp = args.model_output_path / "checkpoints" / str(i)
+            fp.mkdir(parents=True)
+            torch.save(model, fp / "model.pth")
+            torch.save(
+                mu_law_decoding(output, config.model_config.input_channels),
+                fp / "output_sample.pth"
+            )
+
     return model
 
 
@@ -123,15 +144,31 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
     parser.add_argument("--n_training_steps", type=int, default=3)
+    parser.add_argument("--checkpoint_every", type=int, default=25)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)
     parser.add_argument("--layer_size", type=int, default=3)
     parser.add_argument("--stack_size", type=int, default=3)
+    parser.add_argument(
+        "--pretrained_model_path",
+        type=lambda x: x if x is None else Path(x),
+        default=None,
+    )
+    parser.add_argument(
+        "--model_output_path",
+        type=Path,
+        default=Path("models") / datetime.now().strftime("%Y%m%d%H%M%S"),
+    )
+    parser.add_argument(
+        "--training_logs_path", type=Path, default=Path("training_logs"),
+    )
     args = parser.parse_args()
 
     logger.info(f"starting training run")
+    (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
 
-    model_root = Path("models")
+    import ipdb; ipdb.set_trace()
+
     config = TrainingConfig(
         model_config=ModelConfig(
             input_channels=args.input_channels,
@@ -139,10 +176,16 @@ if __name__ == "__main__":
             layer_size=args.layer_size,
             stack_size=args.stack_size,
         ),
+        checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
         n_training_steps=args.n_training_steps,
-        tensorboard_dir="training_logs"
+        pretrained_model_path=args.pretrained_model_path,
+        model_output_path=args.model_output_path,
+        tensorboard_dir=args.training_logs_path,
     )
+    with (args.model_output_path / "config.json").open("w") as f:
+        f.write(config.to_json())
+
     training_data_path = Path(args.dataset) / "train" / "breakdancing"
     batch_fps = [
         str(file_name) for file_name in training_data_path.glob("*.mp4")
@@ -160,9 +203,5 @@ if __name__ == "__main__":
             time.sleep(1)
             pass
 
-    model = train_model(config, batch_fps)
-    model_path = model_root / datetime.now().strftime("%Y%m%d%H%M%S")
-    model_path.mkdir(exist_ok=True, parents=True)
-    with (model_path / "config.json").open("w") as f:
-        json.dump(asdict(config), f, indent=4)
-    torch.save(model, model_path / "model.pth")
+    model = train_model(config, batch_fps, args.model_output_path)
+    torch.save(model, args.model_output_path / "model.pth")

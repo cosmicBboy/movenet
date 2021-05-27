@@ -1,0 +1,10 @@
+compute:
+  train:
+    disk_size: 200
+    actions:
+      on_image_build:
+        - apt-get install wget -y
+        - pip install lightning-grid
+      
+      on_before_training_start:
+        - grid artifacts ${GRID_RUNS_OR_EXPERIMENTS} --download_dir /artifacts
