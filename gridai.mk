@@ -58,7 +58,8 @@ TRAIN_DEBUG_OPTS?=--dataset /kinetics_debug \
 	--input_channels 64 \
 	--residual_channels 64 \
 	--layer_size 3 \
-	--stack_size 3
+	--stack_size 3 \
+	--checkpoint_every 25
 
 env/gridai:
 	@echo "export GRID_USERNAME=<USERNAME>" > env/gridai
