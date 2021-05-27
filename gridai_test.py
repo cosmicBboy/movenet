@@ -1,4 +1,4 @@
-import pathlib as Path
+from pathlib import Path
 
 print("TESTING ARTIFACT LOADING")
 
