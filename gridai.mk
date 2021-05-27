@@ -48,12 +48,9 @@ clean:
 		kinetics.tar.gz \
 		.kinetics
 
-GRID_OPTS?=--g_datastore_name kinetics-debug \
-	--g_datastore_mount_dir /kinetics_debug \
-	--g_datastore_version 3 \
-	--g_instance_type t2.2xlarge \
-	--g_cpus 7 \
-	--g_memory 32G
+GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-debug \
+	GRID_DATASTORE_MOUNT_DIR=/kinetics_debug \
+	GRID_DATASTORE_VERSION=3
 
 TRAIN_DEBUG_OPTS?=--dataset /kinetics_debug \
 	--n_training_steps 500 \
@@ -63,11 +60,19 @@ TRAIN_DEBUG_OPTS?=--dataset /kinetics_debug \
 	--layer_size 3 \
 	--stack_size 3
 
+env/gridai:
+	@echo "export GRID_USERNAME=<USERNAME>" > env/gridai
+	@echo "export GRID_API_KEY=<API_KEY>" >> env/gridai
+	@echo "export GRID_PROVIDER_CREDENTIALS=<PROVIDER_CREDENTIALS>" >> env/gridai
+
 train-debug:
-	grid train ${GRID_OPTS} movenet/trainer.py ${TRAIN_DEBUG_OPTS}
+	${GRID_OPTS} scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS}
 
 train-debug-continue:
-	grid train ${GRID_OPTS} --g_config gridai-config.yml gridai_test.py
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=merciful-frog-774-exp0 \
+		scripts/run-grid-experiment.sh \
+		${TRAIN_DEBUG_OPTS} \
+		--pretrained_model_path /artifacts/merciful-frog-774-exp0/models/20210527105745/model.pth
 
 session-debug:
 	grid session create \

@@ -38,7 +38,13 @@ class TrainingConfig:
     learning_rate: float = 0.0002
     weight_decay: float = 0.0
     n_training_steps: int = 100
-    pretrained_model_path: Optional[Path] = None
+    pretrained_model_path: Optional[Path] = field(
+        default=None,
+        metadata=config(
+            encoder=lambda x: x if x is None else str(x),
+            decoder=lambda x: x if x is None else Path(x),
+        ),
+    )
     model_output_path: Path = field(
         default="models", metadata=config(encoder=str, decoder=Path),
     )
@@ -82,7 +88,11 @@ def make_batch(examples: List[dataset.Example], config: TrainingConfig):
 
 
 def train_model(config: TrainingConfig, batch_fps: List[str]):
-    model = WaveNet(**asdict(config.model_config))
+    if config.pretrained_model_path:
+        model = torch.load(config.pretrained_model_path)
+    else:
+        model = WaveNet(**asdict(config.model_config))
+
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         lr=config.learning_rate,
@@ -113,7 +123,7 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
         writer.add_scalar("loss/train", loss, i)
         writer.add_scalar("grad_norm", grad_norm, i)
 
-        if config.checkpoint_every % i == 0:
+        if  i % config.checkpoint_every == 0:
             logger.info(f"creating checkpoint at step {i}")
             fp = args.model_output_path / "checkpoints" / str(i)
             fp.mkdir(parents=True)
@@ -167,8 +177,6 @@ if __name__ == "__main__":
     logger.info(f"starting training run")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
 
-    import ipdb; ipdb.set_trace()
-
     config = TrainingConfig(
         model_config=ModelConfig(
             input_channels=args.input_channels,
@@ -203,5 +211,5 @@ if __name__ == "__main__":
             time.sleep(1)
             pass
 
-    model = train_model(config, batch_fps, args.model_output_path)
+    model = train_model(config, batch_fps)
     torch.save(model, args.model_output_path / "model.pth")

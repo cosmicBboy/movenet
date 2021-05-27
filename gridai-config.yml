@@ -1,10 +1,26 @@
 compute:
+
+  provider:
+    credentials: ${GRID_PROVIDER_CREDENTIALS}
+    region: us-east-1
+    vendor: aws
+
   train:
     disk_size: 200
+    instance: t2.2xlarge
+    cpus: 7
+    memory: 32G
+    distributed: false
+
+    datastore_name: ${GRID_DATASTORE_NAME}
+    datastore_version: ${GRID_DATASTORE_VERSION}
+    datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
+
     actions:
       on_image_build:
         - apt-get install wget -y
         - pip install lightning-grid
       
       on_before_training_start:
-        - grid artifacts ${GRID_RUNS_OR_EXPERIMENTS} --download_dir /artifacts
+        - grid login --username ${GRID_USERNAME} --key ${GRID_API_KEY}
+        - grid artifacts ${GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS} --download_dir /artifacts || echo 'skip artifacts download'
