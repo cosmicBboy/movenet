@@ -71,9 +71,13 @@ train-debug:
 
 train-debug-continue:
 	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=merciful-frog-774-exp0 \
-		scripts/run-grid-experiment.sh \
-		${TRAIN_DEBUG_OPTS} \
+		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
 		--pretrained_model_path /artifacts/merciful-frog-774-exp0/models/20210527105745/model.pth
+
+train-debug-continue-2:
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=cherry-perch-119-exp0 \
+		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
+		--pretrained_model_path /artifacts/cherry-perch-119-exp0/models/20210527151106/model.pth
 
 session-debug:
 	grid session create \
