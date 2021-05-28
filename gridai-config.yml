@@ -9,8 +9,9 @@ compute:
     disk_size: 200
     instance: t2.2xlarge
     cpus: 7
+    gpus: 0
     memory: 32G
-    distributed: false
+    framework: lightning
 
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}
