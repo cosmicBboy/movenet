@@ -139,7 +139,6 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
                     # mp3 requires 2 channels (left, right)
                     torch.stack([sample, sample]),
                     sample_rate=sample.shape[0],
-                    format="mp3",
                 )
 
     return model
