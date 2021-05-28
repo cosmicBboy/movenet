@@ -9,6 +9,7 @@ from typing import List, Optional
 import torch
 import torch.optim
 import torch.nn.functional as F
+import torchaudio
 from torch.utils.tensorboard import SummaryWriter
 from torchaudio.functional import mu_law_encoding, mu_law_decoding
 from torchtyping import TensorType
@@ -127,11 +128,19 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
             logger.info(f"creating checkpoint at step {i}")
             fp = args.model_output_path / "checkpoints" / str(i)
             fp.mkdir(parents=True)
-            torch.save(model, fp / "model.pth")
-            torch.save(
-                mu_law_decoding(output, config.model_config.input_channels),
-                fp / "output_sample.pth"
+            output_samples = mu_law_decoding(
+                output.argmax(1), config.model_config.input_channels
             )
+            torch.save(model, fp / "model.pth")
+            torch.save(output_samples, fp / "output_samples.pth")
+            for i, sample in enumerate(output_samples):
+                torchaudio.save(
+                    fp / f"output_sample_{i}.mp3",
+                    # mp3 requires 2 channels (left, right)
+                    torch.stack([sample, sample]),
+                    sample_rate=sample.shape[0],
+                    format="mp3",
+                )
 
     return model
 
@@ -200,16 +209,6 @@ if __name__ == "__main__":
     ]
     logger.info(f"config: {config}")
     logger.info(f"files: {batch_fps}")
-
-    # make sure video files can be loaded
-    for _ in range(MAX_RETRIES):
-        try:
-            dataset.load_video(batch_fps[0])
-            logger.info(f"video loading success")
-            break
-        except:
-            time.sleep(1)
-            pass
 
     model = train_model(config, batch_fps)
     torch.save(model, args.model_output_path / "model.pth")
