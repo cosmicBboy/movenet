@@ -147,14 +147,35 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
 if __name__ == "__main__":
     import argparse
     import json
+    import os
+    import subprocess
     import time
     from pathlib import Path
     from datetime import datetime
+
 
     logging.basicConfig(
         level=logging.DEBUG,
         format="[%(levelname)s] %(asctime)s:: %(message)s",
     )
+
+    def download_pretrained_model(run_exp_name: str):
+        logger.info(f"downloading pretrained model from {run_exp_name}")
+        # subprocess.run(
+        #     [
+        #         "grid",
+        #         "login",
+        #         "--username",
+        #         os.getenv("GRID_USERNAME"),
+        #         "--key",
+        #         os.getenv("GRID_API_KEY")],
+        # )
+        subprocess.run(
+            ["grid", "artifacts", run_exp_name, "--download_dir", "/artifacts"]
+        )
+
+
+    
 
     MAX_RETRIES = 10
 
@@ -172,6 +193,7 @@ if __name__ == "__main__":
         type=lambda x: x if x is None else Path(x),
         default=None,
     )
+    parser.add_argument("--pretrained_run_exp_name", type=str, default=None)
     parser.add_argument(
         "--model_output_path",
         type=Path,
@@ -181,6 +203,9 @@ if __name__ == "__main__":
         "--training_logs_path", type=Path, default=Path("training_logs"),
     )
     args = parser.parse_args()
+
+    if args.pretrained_run_exp_name:
+        download_pretrained_model(args.pretrained_run_exp_name)
 
     logger.info(f"starting training run")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
