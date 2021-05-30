@@ -9,6 +9,7 @@ setup(
     packages=["movenet"],
     install_requires=[
         "av",
+        "dataclasses_json",
         "opencv-python",
         "torch",
         "torchvision",
