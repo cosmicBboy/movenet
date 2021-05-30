@@ -161,15 +161,15 @@ if __name__ == "__main__":
 
     def download_pretrained_model(run_exp_name: str):
         logger.info(f"downloading pretrained model from {run_exp_name}")
-        # subprocess.run(
-        #     [
-        #         "grid",
-        #         "login",
-        #         "--username",
-        #         os.getenv("GRID_USERNAME"),
-        #         "--key",
-        #         os.getenv("GRID_API_KEY")],
-        # )
+        subprocess.run(
+            [
+                "grid",
+                "login",
+                "--username",
+                os.getenv("GRID_USERNAME"),
+                "--key",
+                os.getenv("GRID_API_KEY")],
+        )
         subprocess.run(
             ["grid", "artifacts", run_exp_name, "--download_dir", "/artifacts"]
         )
