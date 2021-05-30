@@ -17,6 +17,11 @@ compute:
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
-    # environment:
-    #   GRID_USERNAME: ${GRID_USERNAME}
-    #   GRID_API_KEY: ${GRID_API_KEY}
+    environment:
+      GRID_USERNAME: ${GRID_USERNAME}
+      GRID_API_KEY: ${GRID_API_KEY}
+
+    actions:
+      on_image_build:
+        - apt-get install wget -y
+        - pip install lightning-grid
