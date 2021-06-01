@@ -135,7 +135,7 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
             torch.save(output_samples, fp / "output_samples.pth")
             for i, sample in enumerate(output_samples):
                 torchaudio.save(
-                    fp / f"output_sample_{i}.mp3",
+                    str(fp / f"output_sample_{i}.mp3"),
                     # mp3 requires 2 channels (left, right)
                     torch.stack([sample, sample]),
                     sample_rate=sample.shape[0],
