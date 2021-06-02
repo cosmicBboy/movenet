@@ -53,13 +53,13 @@ GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-debug \
 	GRID_DATASTORE_VERSION=3
 
 TRAIN_DEBUG_OPTS?=--dataset /kinetics_debug \
-	--n_training_steps 3 \
+	--n_training_steps 500 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
 	--residual_channels 64 \
 	--layer_size 3 \
 	--stack_size 3 \
-	--checkpoint_every 1
+	--checkpoint_every 25
 
 env/gridai:
 	@echo "export GRID_USERNAME=<USERNAME>" > env/gridai
