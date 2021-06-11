@@ -25,11 +25,6 @@ class Example:
 
 
 def load_video(video_file: str):
-    # video, audio, info = torchvision.io.read_video(video_file, pts_unit="sec")
-    # timestamps, _ = torchvision.io.read_video_timestamps(
-    #     video_file, pts_unit="sec"
-    # )
-    # import ipdb; ipdb.set_trace()
     return Example(*torchvision.io.read_video(video_file, pts_unit="pts"))
 
 

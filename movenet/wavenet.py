@@ -11,6 +11,14 @@ from movenet.modules import (
     DenseConv,
 )
 
+AudioTensor = TensorType["batch", "channels", "frames"]
+VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
+
+MAX_AUDIO_FRAMES = 10000
+MAX_VIDEO_FRAMES = 300
+VIDEO_KERNEL_SIZE = (1, 10, 10)
+UPSAMPLE_KERNEL_SIZE = (9701, )
+
 
 class WaveNet(nn.Module):
     """WaveNet implementation that supports local and global conditioning.
@@ -31,11 +39,20 @@ class WaveNet(nn.Module):
     """
 
     # TODO: implementation plan
-    # 1. create backbone of the architecture for processing audio signal
-    # 2. add local conditioning for video signal
-    # 3. add global conditioning for on dance-style category
+    # 1. ✅ create backbone of the architecture for processing audio signal
+    # 2. ✅ add local conditioning for video signal
+    #    - 🔬 first convolve the video frames to reduce dimensionality of the
+    #      video signal before upsampling via transposed convolutions
+    # 3. 🚧 add global conditioning for on dance-style category
 
-    def __init__(self, layer_size, stack_size, input_channels, residual_channels):
+    def __init__(
+        self,
+        layer_size: int,
+        stack_size: int,
+        input_channels: int,
+        residual_channels: int,
+        video_in_channels: int = 3,
+    ):
         super().__init__()
         
         # attributes
@@ -45,6 +62,16 @@ class WaveNet(nn.Module):
         self.residual_channels = residual_channels
 
         # modules
+        self.video_conv = nn.Conv3d(
+            in_channels=video_in_channels,
+            out_channels=input_channels,
+            kernel_size=VIDEO_KERNEL_SIZE,
+        )
+        self.video_transpose = nn.ConvTranspose1d(
+            in_channels=input_channels,
+            out_channels=input_channels,
+            kernel_size=UPSAMPLE_KERNEL_SIZE,
+        )
         self.causal_conv = CausalConv1d(input_channels, residual_channels)
         self.residual_conv_stack = ResidualConvStack(
             layer_size, stack_size, residual_channels, input_channels,
@@ -66,15 +93,28 @@ class WaveNet(nn.Module):
             )
         return output_size
 
+    def upsample_video(self, video):
+        video = video.permute(0, 4, 1, 2, 3)
+        # convolve video signal to be of dim (batch x channels x frames)
+        video_encoding = self.video_conv(video).squeeze(-1).squeeze(-1)
+        # upsample video to match the number of frames in the audio sample.
+        return self.video_transpose(video_encoding)
+
     def forward(
         self,
-        audio: TensorType["batch", "channels", "frames"],
-        video: TensorType["batch", "channels", "frames"] = None,
+        audio: AudioTensor,
+        video: VideoTensor,
         global_features: TensorType = None,
     ):
-        output = self.causal_conv(audio)
+        video = self.upsample_video(video)
+        assert video.size() == audio.size(), (
+            "expected video and audio tensors to have equal sizes, found "
+            f"{video.size()}, {audio.size()}"
+        )
         skip_connections = self.residual_conv_stack(
-            output, self.compute_output_size(audio)
+            input=self.causal_conv(audio),
+            context=video,
+            skip_size=self.compute_output_size(audio)
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
         return output

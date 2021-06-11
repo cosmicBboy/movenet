@@ -10,12 +10,20 @@ import torch
 import torch.optim
 import torch.nn.functional as F
 import torchaudio
+import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torchaudio.functional import mu_law_encoding, mu_law_decoding
 from torchtyping import TensorType
 
 from movenet import dataset
-from movenet.wavenet import WaveNet
+from movenet.wavenet import (
+    WaveNet,
+    AudioTensor,
+    VideoTensor,
+    VIDEO_KERNEL_SIZE,
+    MAX_AUDIO_FRAMES,
+    MAX_VIDEO_FRAMES,
+)
 
 
 logger = logging.getLogger(__file__)
@@ -54,6 +62,14 @@ class TrainingConfig:
     )
 
 
+def resample_audio(
+    audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
+) -> TensorType["channels", "frames"]:
+    return torchaudio.transforms.Resample(
+        orig_freq=audio.shape[1], new_freq=freq
+    )(audio)
+
+
 def one_hot_encode(audio, input_channels):
     # need to figure out a more principled way of combining two audio
     # (left/right) channels into one
@@ -68,24 +84,59 @@ def one_hot_encode(audio, input_channels):
     return one_hot_enc
 
 
-def zero_padded_stack(tensors: List[TensorType["channels", "frames"]]):
-    max_frames = max(x.size(1) for x in tensors)
+def zero_pad_audio(
+    audio: List[TensorType["channels", "frames"]]
+) -> AudioTensor:
+    max_frames = max(x.size(1) for x in audio)
     output = []
-    for x in tensors:
+    for x in audio:
         padded_x = torch.zeros(x.size(0), max_frames)
         padded_x[:, :x.size(1)] = x
         output.append(padded_x)
     return torch.stack(output)
 
 
+def resize_video(
+    videos: List[TensorType["frames", "channels", "height", "width"]]
+) -> List[TensorType["frames", "channels", "height", "width"]]:
+    videos_resized = []
+    for video in videos:
+        video_resized = torch.zeros(
+            video.shape[0], video.shape[1], *VIDEO_KERNEL_SIZE[1:]
+        )
+        for i, frame in enumerate(video):
+            video_resized[i] = torchvision.transforms.functional.resize(
+                frame, size=VIDEO_KERNEL_SIZE[1:]
+            )
+        videos_resized.append(video_resized)
+    return videos_resized
+
+
+def zero_pad_video(
+    videos: List[TensorType["frames", "channels", "height", "width"]],
+    max_frames: int = MAX_VIDEO_FRAMES,
+) -> VideoTensor:
+    max_frames = min(max_frames, max(v.shape[0] for v in videos))
+    output = []
+    for v in videos:
+        padded_v = torch.zeros(max_frames, *v.shape[1:])
+        padded_v[:v.shape[0]] = v
+        output.append(padded_v.permute(0, 2, 3, 1))
+    return torch.stack(output)
+
+
 def make_batch(examples: List[dataset.Example], config: TrainingConfig):
-    audio = zero_padded_stack(
-        [
-            one_hot_encode(x.audio, config.model_config.input_channels)
-            for x in examples
-        ]
+    audio, video = [], []
+    for example in examples:
+        # frames x channels x height x width
+        video.append(example.video.permute(0, 3, 1, 2))
+        audio.append(resample_audio(example.audio))
+
+    audio = zero_pad_audio(
+        [one_hot_encode(a, config.model_config.input_channels) for a in audio]
     )
-    return audio
+    video = zero_pad_video(resize_video(video))
+    return audio, video
 
 
 def train_model(config: TrainingConfig, batch_fps: List[str]):
@@ -102,9 +153,9 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
     raw_data = [dataset.load_video(fp) for fp in batch_fps]
-    audio = make_batch(raw_data, config)
+    audio, video = make_batch(raw_data, config)
     for i in range(1, config.n_training_steps + 1):
-        output = model(audio)
+        output = model(audio, video)
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
         optimizer.zero_grad()
@@ -174,16 +225,13 @@ if __name__ == "__main__":
             ["grid", "artifacts", run_exp_name, "--download_dir", "/artifacts"]
         )
 
-
-    
-
     MAX_RETRIES = 10
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
-    parser.add_argument("--n_training_steps", type=int, default=3)
-    parser.add_argument("--checkpoint_every", type=int, default=25)
+    parser.add_argument("--n_training_steps", type=int, default=10)
+    parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)
     parser.add_argument("--layer_size", type=int, default=3)

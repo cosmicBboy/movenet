@@ -19,7 +19,7 @@ class CausalConv1d(nn.Module):
             kernel_size=2,
             stride=1,
             padding=1,
-            bias=False,
+            bias=True,
         )
 
     def forward(self, x):
@@ -28,16 +28,17 @@ class CausalConv1d(nn.Module):
 
 
 class DilatedCausalConv1d(nn.Module):
-    def __init__(self, channels, dilation=1):
+    def __init__(self, channels, kernel_size=3, dilation=1):
         super().__init__()
+        padding = (kernel_size - 1) // 2 * dilation
         self.conv = nn.Conv1d(
             channels,
             channels,
-            kernel_size=2,
+            kernel_size=kernel_size,
             stride=1,
             dilation=dilation,
-            padding=0,
-            bias=False,
+            padding=padding,
+            bias=True,
         )
 
     def forward(self, x):
@@ -47,20 +48,31 @@ class DilatedCausalConv1d(nn.Module):
 class GatedResidualConv1d(nn.Module):
     def __init__(self, residual_channels, skip_channels, dilation):
         super().__init__()
-        self.dilated_conv = DilatedCausalConv1d(
+        self.conv_filter = DilatedCausalConv1d(
             residual_channels, dilation=dilation
+        )
+        self.conv_gate = DilatedCausalConv1d(
+            residual_channels, dilation=dilation
+        )
+        self.context_conv_filter = nn.Conv1d(
+            residual_channels, residual_channels, 1, padding=0, dilation=1
+        )
+        self.context_conv_gate = nn.Conv1d(
+            residual_channels, residual_channels, 1, padding=0, dilation=1
         )
         self.conv_residual = nn.Conv1d(residual_channels, residual_channels, 1)
         self.conv_skip = nn.Conv1d(residual_channels, skip_channels, 1)
 
-    def forward(self, x, skip_size):
-        dilated = self.dilated_conv(x)
+    def forward(self, input, context, skip_size):
+        f = self.conv_filter(input) + self.context_conv_filter(context)
+        g = self.conv_gate(input) + self.context_conv_gate(context)
+
         # pixel-cnn gating
-        gated = torch.tanh(dilated) * torch.sigmoid(dilated)
+        gated = torch.tanh(f) * torch.sigmoid(g)
 
         # residual network
         residual = self.conv_residual(gated)
-        residual += x[:, :, -residual.size(2):]
+        residual += input[:, :, -residual.size(2):]
 
         # skip connection
         skip = self.conv_skip(gated)
@@ -91,11 +103,11 @@ class ResidualConvStack(nn.Module):
             for x in range(self.layer_size)
         ]
 
-    def forward(self, x, skip_size):
-        output = x
+    def forward(self, input, context, skip_size):
+        output = input
         skip_connections = []
-        for conv in self.conv_layers:
-            output, skip = conv(output, skip_size)
+        for gated_residual_conv in self.conv_layers:
+            output, skip = gated_residual_conv(output, context, skip_size)
             skip_connections.append(skip)
         return torch.stack(skip_connections)
 

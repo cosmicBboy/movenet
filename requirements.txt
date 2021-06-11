@@ -1,5 +1,6 @@
 -e .
 av
+dataclasses_json
 numpy
 opencv-python
 tensorboard
