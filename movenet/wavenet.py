@@ -14,10 +14,12 @@ from movenet.modules import (
 AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
-MAX_AUDIO_FRAMES = 10000
+MAX_AUDIO_FRAMES = 400000
 MAX_VIDEO_FRAMES = 300
 VIDEO_KERNEL_SIZE = (1, 10, 10)
-UPSAMPLE_KERNEL_SIZE = (9701, )
+
+UPSAMPLE_KERNEL_SIZES = [(9701, ), (40, )]
+UPSAMPLE_STRIDES = [1, 40]
 
 
 class WaveNet(nn.Module):
@@ -67,11 +69,16 @@ class WaveNet(nn.Module):
             out_channels=input_channels,
             kernel_size=VIDEO_KERNEL_SIZE,
         )
-        self.video_transpose = nn.ConvTranspose1d(
-            in_channels=input_channels,
-            out_channels=input_channels,
-            kernel_size=UPSAMPLE_KERNEL_SIZE,
-        )
+        # perform two layers of conv transpose
+        self.video_transpose = nn.Sequential(*[
+            nn.ConvTranspose1d(
+                in_channels=input_channels,
+                out_channels=input_channels,
+                kernel_size=k,
+                stride=s,
+            )
+            for k, s in zip(UPSAMPLE_KERNEL_SIZES, UPSAMPLE_STRIDES)
+        ])
         self.causal_conv = CausalConv1d(input_channels, residual_channels)
         self.residual_conv_stack = ResidualConvStack(
             layer_size, stack_size, residual_channels, input_channels,
