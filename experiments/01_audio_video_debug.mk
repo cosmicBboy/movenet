@@ -16,7 +16,7 @@ train-debug:
 	${GRID_OPTS} scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS}
 
 train-debug-continue:
-	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=nostalgic-impala-272 \
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=nostalgic-impala-272-exp0 \
 		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
-		--pretrained_model_path /artifacts/nostalgic-impala-272/models/20210612210715/model.pth \
-		--pretrained_run_exp_name nostalgic-impala-272
+		--pretrained_model_path /artifacts/nostalgic-impala-272-exp0/models/20210612210715/model.pth \
+		--pretrained_run_exp_name nostalgic-impala-272-exp0
