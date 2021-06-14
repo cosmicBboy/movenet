@@ -252,7 +252,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.pretrained_run_exp_name:
+    if args.pretrained_model_path or args.pretrained_run_exp_name:
         download_pretrained_model(args.pretrained_run_exp_name)
 
     logger.info(f"starting training run")
