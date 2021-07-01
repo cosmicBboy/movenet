@@ -20,3 +20,9 @@ train-debug-continue:
 		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
 		--pretrained_model_path /artifacts/nostalgic-impala-272-exp0/models/20210612210715/model.pth \
 		--pretrained_run_exp_name nostalgic-impala-272-exp0
+
+train-debug-continue-2:
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=upbeat-iguana-246-exp0 \
+		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
+		--pretrained_model_path /artifacts/upbeat-iguana-246-exp0/models/20210612210715/model.pth \
+		--pretrained_run_exp_name upbeat-iguana-246-exp0
