@@ -31,7 +31,7 @@ kinetics.tar.gz:
 
 .PHONY: create-kinetics-debug
 create-kinetics-debug: datasets/kinetics_debug
-	grid datastore create --source datasets/kinetics_debug --name kinetics-debug
+	grid datastore create --source datasets/kinetics_debug --name kinetics-debug-b
 
 .PHONY: create-kinetics-breakdancing
 create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
