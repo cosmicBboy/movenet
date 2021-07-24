@@ -259,6 +259,9 @@ if __name__ == "__main__":
         f.write(config.to_json())
 
     training_data_path = Path(args.dataset) / "train" / "breakdancing"
+    print("ROOT DIR")
+    for fp in Path("/").glob("**/*"):
+        print(fp)
     print("TRAINING_DATA_PATH", training_data_path)
     for fp in Path(args.dataset).glob("**/*"):
         print(fp)
