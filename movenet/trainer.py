@@ -153,6 +153,7 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
     raw_data = [dataset.load_video(fp) for fp in batch_fps]
+    print("RAW DATA", raw_data)
     audio, video = make_batch(raw_data, config)
     for i in range(1, config.n_training_steps + 1):
         output = model(audio, video)
@@ -210,22 +211,6 @@ if __name__ == "__main__":
         format="[%(levelname)s] %(asctime)s:: %(message)s",
     )
 
-    def download_pretrained_model(run_exp_name: str):
-        logger.info(f"downloading pretrained model from {run_exp_name}")
-        os.system()
-        subprocess.run(
-            [
-                "grid",
-                "login",
-                "--username",
-                os.getenv("GRID_USERNAME"),
-                "--key",
-                os.getenv("GRID_API_KEY")],
-        )
-        subprocess.run(
-            ["grid", "artifacts", run_exp_name, "--download_dir", "/artifacts"]
-        )
-
     MAX_RETRIES = 10
 
     parser = argparse.ArgumentParser()
@@ -253,9 +238,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # if args.pretrained_model_path or args.pretrained_run_exp_name:
-        # download_pretrained_model(args.pretrained_run_exp_name)
-
     logger.info(f"starting training run")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
 
@@ -277,6 +259,9 @@ if __name__ == "__main__":
         f.write(config.to_json())
 
     training_data_path = Path(args.dataset) / "train" / "breakdancing"
+    print("TRAINING_DATA_PATH", training_data_path)
+    for fp in Path(args.dataset).glob("**/*"):
+        print(fp)
     batch_fps = [
         str(file_name) for file_name in training_data_path.glob("*.mp4")
     ]
