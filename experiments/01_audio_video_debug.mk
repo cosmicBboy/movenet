@@ -1,6 +1,6 @@
 GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-debug \
 	GRID_DATASTORE_MOUNT_DIR=/kinetics_debug \
-	GRID_DATASTORE_VERSION=3
+	GRID_DATASTORE_VERSION=4
 
 TRAIN_DEBUG_OPTS?=--dataset /kinetics_debug \
 	--n_training_steps 500 \

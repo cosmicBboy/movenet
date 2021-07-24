@@ -31,15 +31,15 @@ kinetics.tar.gz:
 
 .PHONY: create-kinetics-debug
 create-kinetics-debug: datasets/kinetics_debug
-	grid datastores create --source datasets/kinetics_debug --name kinetics-debug
+	grid datastore create --source datasets/kinetics_debug --name kinetics-debug
 
 .PHONY: create-kinetics-breakdancing
 create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
-	grid datastores create --source kinetics-breakdancing.tar.gz --name kinetics-breakdancing
+	grid datastore create --source kinetics-breakdancing.tar.gz --name kinetics-breakdancing
 
 .PHONY: create-kinetics
 create-kinetics: .kinetics
-	grid datastores create --source .kinetics --name kinetics-all
+	grid datastore create --source .kinetics --name kinetics-all
 
 clean:
 	rm -rf \
