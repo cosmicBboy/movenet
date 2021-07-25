@@ -259,18 +259,6 @@ if __name__ == "__main__":
         f.write(config.to_json())
 
     training_data_path = Path(args.dataset) / "train" / "breakdancing"
-    print("ROOT DIR")
-    for fp in Path("/").glob("*"):
-        print(fp)
-    print("OPT DIR")
-    for fp in Path("/opt").glob("*"):
-        print(fp)
-    print("MP4 FILES")
-    for fp in Path("/").glob("**/*.mp4"):
-        print(fp)
-    print("TRAINING_DATA_PATH", training_data_path)
-    for fp in Path(args.dataset).glob("**/*"):
-        print(fp)
     batch_fps = [
         str(file_name) for file_name in training_data_path.glob("*.mp4")
     ]
