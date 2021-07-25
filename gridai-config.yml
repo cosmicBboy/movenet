@@ -13,6 +13,10 @@ compute:
     memory: 32G
     framework: torch
 
+    datastore_name: ${GRID_DATASTORE_NAME}
+    datastore_version: ${GRID_DATASTORE_VERSION}
+    datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
+
     actions:
       on_image_build:
         - apt-get update -y
