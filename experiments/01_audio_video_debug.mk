@@ -27,3 +27,10 @@ train-debug-continue-2:
 		--model_output_path models \
 		--pretrained_model_path /artifacts/upbeat-iguana-246-exp0/models/20210614141239/model.pth \
 		--pretrained_run_exp_name upbeat-iguana-246-exp0
+
+train-debug-continue-3:
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=cornflower-rooster-462-exp0 \
+		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
+		--model_output_path models \
+		--pretrained_model_path /artifacts/cornflower-rooster-462-exp0/models/model.pth \
+		--pretrained_run_exp_name cornflower-rooster-462-exp0
