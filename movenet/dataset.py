@@ -28,11 +28,20 @@ def load_video(video_file: str):
     return Example(*torchvision.io.read_video(video_file, pts_unit="pts"))
 
 
-def quantize_audio():
-    pass
+class KineticsDataset(torch.utils.data.Dataset):
+
+    def __init__(self, filepath, train=True):
+        self.filepath = filepath
+        self.train = train
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self):
+        pass
 
 
-def create_dataset():
+def get_dataloader():
     pass
 
 
@@ -40,7 +49,8 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("video_file", type=str)
+    parser.add_argument("filepath", type=str)
     args = parser.parse_args()
 
-    load_video(args.video_file)
+    dataset = KineticsDataset(args.filepath)
+    import ipdb; ipdb.set_trace()

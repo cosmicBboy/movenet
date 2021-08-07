@@ -153,7 +153,6 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
     raw_data = [dataset.load_video(fp) for fp in batch_fps]
-    print("RAW DATA", raw_data)
     audio, video = make_batch(raw_data, config)
     for i in range(1, config.n_training_steps + 1):
         output = model(audio, video)
