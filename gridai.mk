@@ -47,6 +47,7 @@ test-kinetics-dataloader:
 	envsubst < config/test-kinetics-dataloader.yml > /tmp/test-kinetics-dataloader.yml && \
 	grid run \
 		--config /tmp/test-kinetics-dataloader.yml \
+		--ignore_warnings \
 		movenet/dataset.py /kinetics
 
 clean:

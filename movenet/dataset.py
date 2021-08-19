@@ -219,13 +219,13 @@ if __name__ == "__main__":
     )
     n_batches = len(dataloader)
     print(f"iterating through {n_batches} batches")
-    writer = SummaryWriter(args.tensorboard_path)
+    # writer = SummaryWriter(args.tensorboard_path)
     start = time.time()
     for i, (audio, video, contexts, filepaths) in enumerate(dataloader, 1):
-        writer.add_scalar("n_steps", i, i)
-        writer.add_scalar("percent_progress", i / n_batches, i)
+        # writer.add_scalar("n_steps", i, i)
+        # writer.add_scalar("percent_progress", i / n_batches, i)
         print(f"[batch {i}/{n_batches}]")
     print("done iterating through dataset")
-    with open("time.txt", "w") as f:
-        f.write(f"time taken: {time.time() - start}")
-    sys.exit()
+    # with open("time.txt", "w") as f:
+        # f.write(f"time taken: {time.time() - start}")
+    # sys.exit()

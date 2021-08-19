@@ -87,7 +87,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
     for epoch in range(1, config.n_epochs + 1):
-        for step, (audio, video, contexts, _) in enumerate(dataloader):
+        for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
             output = model(audio, video)
             target = audio[:, :, model.receptive_fields:].argmax(1)
             loss = F.cross_entropy(output, target)
@@ -107,8 +107,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
                 f"loss={loss:0.08f}, "
                 f"grad_norm={grad_norm:0.08f}"
             )
-            writer.add_scalar("loss/train", loss, epoch)
-            writer.add_scalar("grad_norm", grad_norm, epoch)
+            writer.add_scalar("loss/train", loss, epoch * step)
+            writer.add_scalar("grad_norm", grad_norm, epoch * step)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
