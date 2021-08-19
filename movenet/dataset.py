@@ -71,9 +71,9 @@ class KineticsDataset(torch.utils.data.Dataset):
         self.index = []
         for context in self.contexts:
             for fp in (self.root_path / context).glob("*.mp4"):
-                if not "_raw" in fp.stem:
-                    # _raw files don't contain audio
-                    self.index.append(RawMetadata(context, str(fp)))
+                if "_raw" in fp.stem or fp.stem.startswith("."):
+                    continue
+                self.index.append(RawMetadata(context, str(fp)))
 
         self.class_balance = {
             k: v / len(self.index)
@@ -196,11 +196,15 @@ def resize_video(
 
 
 if __name__ == "__main__":
+    import sys
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
     parser.add_argument("filepath", type=str)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument(
+        "--tensorboard-path", type=Path, default=Path("training_logs"),
+    )
     args = parser.parse_args()
 
     torch.manual_seed(1000)
@@ -214,8 +218,10 @@ if __name__ == "__main__":
     )
     n_batches = len(dataloader)
     print(f"iterating through {n_batches} batches")
-    writer = SummaryWriter("/tmp/tensorboard_logs")
+    writer = SummaryWriter(args.tensorboard_path)
     for i, (audio, video, contexts, filepaths) in enumerate(dataloader, 1):
         writer.add_scalar("n_steps", i, i)
         writer.add_scalar("percent_progress", i / n_batches, i)
         print(f"[batch {i}/{n_batches}]")
+    print("done iterating through dataset")
+    sys.exit()

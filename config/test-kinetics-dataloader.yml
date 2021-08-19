@@ -14,7 +14,7 @@ compute:
     framework: torch
 
     datastore_name: kinetics-breakdancing
-    datastore_version: 1
+    datastore_version: 2
     datastore_mount_dir: /kinetics
 
     actions:
