@@ -112,10 +112,7 @@ def make_batch(input_channels: int, examples: List[Example]):
     for example in examples:
         # frames x channels x height x width
         video.append(example.video.permute(0, 3, 1, 2))
-        try:
-            audio.append(resample_audio(example.audio))
-        except:
-            import ipdb; ipdb.set_trace()
+        audio.append(resample_audio(example.audio))
         contexts.append(example.context)
         filepaths.append(example.filepath)
 

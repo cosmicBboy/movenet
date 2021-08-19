@@ -13,9 +13,9 @@ compute:
     memory: 32G
     framework: torch
 
-    datastore_name: kinetics-all
+    datastore_name: kinetics-breakdancing
     datastore_version: 1
-    datastore_mount_dir: /kinetics_all
+    datastore_mount_dir: /kinetics
 
     actions:
       on_image_build:

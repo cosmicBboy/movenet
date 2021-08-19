@@ -6,7 +6,7 @@ compute:
     vendor: aws
 
   train:
-    disk_size: 200
+    disk_size: 512
     instance: t2.2xlarge
     cpus: 7
     gpus: 0
