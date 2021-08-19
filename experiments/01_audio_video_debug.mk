@@ -3,7 +3,7 @@ GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-debug \
 	GRID_DATASTORE_MOUNT_DIR=/opt/datastore
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
-	--n_training_steps 500 \
+	--n_epochs 500 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
 	--residual_channels 64 \
@@ -37,3 +37,11 @@ train-debug-continue-3:
 		--model_output_path models \
 		--pretrained_model_path /artifacts/cornflower-rooster-462-exp0/models/model.pth \
 		--pretrained_run_exp_name cornflower-rooster-462-exp0
+
+.PHONY: train-debug-continue-4
+train-debug-continue-4:
+	${GRID_OPTS} GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=economic-tuatara-996-exp0 \
+		scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS} \
+		--model_output_path models \
+		--pretrained_model_path /artifacts/economic-tuatara-996-exp0/models/model.pth \
+		--pretrained_run_exp_name economic-tuatara-996-exp0

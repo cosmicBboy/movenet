@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
+from torch.utils.tensorboard import SummaryWriter
 from typing import Any, Dict, List
 
 try:
@@ -73,12 +74,6 @@ class KineticsDataset(torch.utils.data.Dataset):
                 if not "_raw" in fp.stem:
                     # _raw files don't contain audio
                     self.index.append(RawMetadata(context, str(fp)))
-
-        # self.index = [
-        #     RawMetadata("dancing_charleston", 'datasets/kinetics/train/dancing_charleston/SIZsUYJmxzE.mp4'),
-        #     RawMetadata("tap_dancing", 'datasets/kinetics/train/tap_dancing/r7c8VftCqkY.mp4'),
-        #     RawMetadata("salsa_dancing", 'datasets/kinetics/train/salsa_dancing/fEIaSeTqQsE.mp4'),
-        # ]
 
         self.class_balance = {
             k: v / len(self.index)
@@ -198,6 +193,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("filepath", type=str)
+    parser.add_argument("--num-workers", type=int, default=0)
     args = parser.parse_args()
 
     torch.manual_seed(1000)
@@ -207,12 +203,12 @@ if __name__ == "__main__":
         input_channels=16,
         batch_size=8,
         shuffle=True,
-        num_workers=0,
+        num_workers=args.num_workers,
     )
-    print(f"iterating through {len(dataloader)} batches")
-    for i, (audio, video, contexts, filepaths) in enumerate(dataloader):
-        print(f"[batch {i}]")
-        print(f"audio: {audio.shape}")
-        print(f"video: {video.shape}")
-        print(f"contexts: {contexts}")
-        print(f"filepaths: {filepaths}")
+    n_batches = len(dataloader)
+    print(f"iterating through {n_batches} batches")
+    writer = SummaryWriter("/tmp/tensorboard_logs")
+    for i, (audio, video, contexts, filepaths) in enumerate(dataloader, 1):
+        writer.add_scalar("n_steps", i, i)
+        writer.add_scalar("percent_progress", i / n_batches, i)
+        print(f"[batch {i}/{n_batches}]")
