@@ -111,10 +111,18 @@ def make_batch(input_channels: int, examples: List[Example]):
     audio, video, contexts, filepaths = [], [], [], []
     for example in examples:
         # frames x channels x height x width
-        video.append(example.video.permute(0, 3, 1, 2))
-        audio.append(resample_audio(example.audio))
-        contexts.append(example.context)
-        filepaths.append(example.filepath)
+        try:
+            video.append(example.video.permute(0, 3, 1, 2))
+            audio.append(resample_audio(example.audio))
+            contexts.append(example.context)
+            filepaths.append(example.filepath)
+        except Exception as e:
+            print(
+                f"ERROR: {e} filepath - {example.filepath}, "
+                f"audio - {example.audio}, "
+                f"video - {example.video}, "
+                f"context - {example.context}"
+            )
 
     audio = torch.stack(
         [one_hot_encode_audio(a, input_channels) for a in audio]
