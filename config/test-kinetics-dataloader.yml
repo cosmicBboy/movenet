@@ -1,0 +1,23 @@
+compute:
+
+  provider:
+    credentials: ${GRID_PROVIDER_CREDENTIALS}
+    region: us-east-1
+    vendor: aws
+
+  train:
+    disk_size: 200
+    instance: t2.2xlarge
+    cpus: 7
+    gpus: 0
+    memory: 32G
+    framework: torch
+
+    datastore_name: kinetics-all
+    datastore_mount_dir: /kinetics_all
+
+    actions:
+      on_image_build:
+        - apt-get update -y
+        - apt-get install wget libsndfile-dev -y
+        - pip install lightning-grid

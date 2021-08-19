@@ -44,12 +44,9 @@ create-kinetics: .kinetics
 # loop through entire kinetics dataset
 .PHONY: test-kinetics-dataloader
 test-kinetics-dataloader:
+	envsubst < config/test-kinetics-dataloader.yml > /tmp/test-kinetics-dataloader.yml && \
 	grid run \
-		--name test-kinetics-all-dataloader-$(shell date +'%Y%m%d%H%M%S') \
-		--datastore_name kinetics-all \
-		--datastore_mount_dir /kinetics_all \
-		--instance_type t2.2xlarge \
-		--cpus 7 \
+		--config /tmp/test-kinetics-dataloader.yml \
 		movenet/dataset.py /kinetics_all
 
 clean:
