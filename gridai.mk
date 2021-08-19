@@ -41,6 +41,17 @@ create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
 create-kinetics: .kinetics
 	grid datastore create --source .kinetics --name kinetics-all
 
+# loop through entire kinetics dataset
+.PHONY: test-kinetics-dataloader
+test-kinetics-dataloader:
+	grid run \
+		--name test-kinetics-all-dataloader-$(shell date +'%Y%m%d%H%M%S') \
+		--datastore_name kinetics-all \
+		--datastore_mount_dir /kinetics_all \
+		--instance_type t2.2xlarge \
+		--cpus 7 \
+		movenet/dataset.py /kinetics_all
+
 clean:
 	rm -rf \
 		kinetics-debug.tar.gz \

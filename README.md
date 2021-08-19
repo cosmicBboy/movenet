@@ -88,8 +88,7 @@ Download models
 ./scripts/dancing-to-music-models.sh
 ```
 
-
-### Running an Experiment
+### Running an Experiment on `gridai`
 
 The `experiments` directory contains makefiles for running jobs over various
 exprimental setups.
