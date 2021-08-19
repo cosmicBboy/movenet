@@ -8,7 +8,6 @@ numpy==1.20.3
 opencv-python
 opencv_python_headless
 tensorboard
-tensorflow
 tqdm
 torch==1.9.0
 torchvision==0.10.0
