@@ -203,9 +203,6 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("filepath", type=str)
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument(
-        "--tensorboard-path", type=Path, default=Path("/tmp/tensorboard_logs"),
-    )
     args = parser.parse_args()
 
     torch.manual_seed(1000)
@@ -219,13 +216,12 @@ if __name__ == "__main__":
     )
     n_batches = len(dataloader)
     print(f"iterating through {n_batches} batches")
-    writer = SummaryWriter(args.tensorboard_path)
+    writer = SummaryWriter()
     start = time.time()
     for i, (audio, video, contexts, filepaths) in enumerate(dataloader, 1):
         writer.add_scalar("n_steps", i, i)
         writer.add_scalar("percent_progress", i / n_batches, i)
         print(f"[batch {i}/{n_batches}]")
     print("done iterating through dataset")
-    # with open("time.txt", "w") as f:
-        # f.write(f"time taken: {time.time() - start}")
-    # sys.exit()
+    with open("time.txt", "a") as f:
+        f.write(f"time taken: {time.time() - start}")
