@@ -110,10 +110,14 @@ def make_batch(input_channels: int, examples: List[Example]):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
     audio, video, contexts, filepaths = [], [], [], []
     for example in examples:
-        # frames x channels x height x width
         try:
-            video.append(example.video.permute(0, 3, 1, 2))
-            audio.append(resample_audio(example.audio))
+            # permute to: frames x channels x height x width
+            video.append(resize_video(example.video.permute(0, 3, 1, 2)))
+            audio.append(
+                one_hot_encode_audio(
+                    resample_audio(example.audio), input_channels
+                )
+            )
             contexts.append(example.context)
             filepaths.append(example.filepath)
         except Exception as e:
@@ -124,11 +128,12 @@ def make_batch(input_channels: int, examples: List[Example]):
                 f"context - {example.context}"
             )
 
-    audio = torch.stack(
-        [one_hot_encode_audio(a, input_channels) for a in audio]
-    )
-    video = torch.stack(resize_video(video))
-    return audio, video, contexts, filepaths
+    if not audio or not video:
+        raise RuntimeError(
+            "No audio or video found in this batch: "
+            f"audio: {len(audio)}, video: {len(video)}"
+        )
+    return torch.stack(audio), torch.stack(video), contexts, filepaths
 
 
 def resample_audio(
@@ -170,27 +175,24 @@ def one_hot_encode_audio(audio, input_channels):
 
 
 def resize_video(
-    videos: List[TensorType["frames", "channels", "height", "width"]],
+    video: TensorType["frames", "channels", "height", "width"],
     num_samples: int = MAX_VIDEO_FRAMES,
 ) -> List[TensorType["frames", "channels", "height", "width"]]:
-    videos_resized = []
-    for video in videos:
-        sampled_video = uniform_temporal_subsample(
-            video, num_samples=num_samples, temporal_dim=0
+    sampled_video = uniform_temporal_subsample(
+        video, num_samples=num_samples, temporal_dim=0
+    )
+    if sampled_video.shape[0] > num_samples:
+        sampled_video = sampled_video[:num_samples]
+    video_resized = torch.zeros(
+        sampled_video.shape[0],
+        sampled_video.shape[1],
+        *VIDEO_KERNEL_SIZE[1:]
+    )
+    for i, frame in enumerate(sampled_video):
+        video_resized[i] = torchvision.transforms.functional.resize(
+            frame, size=VIDEO_KERNEL_SIZE[1:]
         )
-        if sampled_video.shape[0] > num_samples:
-            sampled_video = sampled_video[:num_samples]
-        video_resized = torch.zeros(
-            sampled_video.shape[0],
-            sampled_video.shape[1],
-            *VIDEO_KERNEL_SIZE[1:]
-        )
-        for i, frame in enumerate(sampled_video):
-            video_resized[i] = torchvision.transforms.functional.resize(
-                frame, size=VIDEO_KERNEL_SIZE[1:]
-            )
-        videos_resized.append(video_resized.permute(0, 2, 3, 1))
-    return videos_resized
+    return video_resized.permute(0, 2, 3, 1)
 
 
 if __name__ == "__main__":
