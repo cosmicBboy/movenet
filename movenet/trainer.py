@@ -46,7 +46,8 @@ class TrainingConfig:
     optimizer: str = "Adam"
     learning_rate: float = 0.0002
     weight_decay: float = 0.0
-    n_training_steps: int = 100
+    n_epochs: int = 100
+    n_steps_per_epoch: Optional[int] = None
     pretrained_model_path: Optional[Path] = field(
         default=None,
         metadata=config(
@@ -62,84 +63,16 @@ class TrainingConfig:
     )
 
 
-def resample_audio(
-    audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
-) -> TensorType["channels", "frames"]:
-    return torchaudio.transforms.Resample(
-        orig_freq=audio.shape[1], new_freq=freq
-    )(audio)
+def train_model(config: TrainingConfig, dataset_fp: str):
 
-
-def one_hot_encode(audio, input_channels):
-    # need to figure out a more principled way of combining two audio
-    # (left/right) channels into one
-    # https://stackoverflow.com/questions/37313320/how-to-convert-two-channel-audio-into-one-channel-audio
-    combined_channels = audio.mean(dim=0, keepdims=True)
-    quantized = mu_law_encoding(combined_channels, input_channels)
-    one_hot_enc = (
-        torch.zeros(input_channels, quantized.size(1))
-        .scatter_(0, quantized, 1)
+    dataloader = dataset.get_dataloader(
+        dataset_fp,
+        input_channels=16,
+        batch_size=3,
+        shuffle=True,
+        num_workers=0,
     )
-    assert (one_hot_enc.sum(dim=0) == 1).all(), "one hot encoding error"
-    return one_hot_enc
 
-
-def zero_pad_audio(
-    audio: List[TensorType["channels", "frames"]]
-) -> AudioTensor:
-    max_frames = max(x.size(1) for x in audio)
-    output = []
-    for x in audio:
-        padded_x = torch.zeros(x.size(0), max_frames)
-        padded_x[:, :x.size(1)] = x
-        output.append(padded_x)
-    return torch.stack(output)
-
-
-def resize_video(
-    videos: List[TensorType["frames", "channels", "height", "width"]]
-) -> List[TensorType["frames", "channels", "height", "width"]]:
-    videos_resized = []
-    for video in videos:
-        video_resized = torch.zeros(
-            video.shape[0], video.shape[1], *VIDEO_KERNEL_SIZE[1:]
-        )
-        for i, frame in enumerate(video):
-            video_resized[i] = torchvision.transforms.functional.resize(
-                frame, size=VIDEO_KERNEL_SIZE[1:]
-            )
-        videos_resized.append(video_resized)
-    return videos_resized
-
-
-def zero_pad_video(
-    videos: List[TensorType["frames", "channels", "height", "width"]],
-    max_frames: int = MAX_VIDEO_FRAMES,
-) -> VideoTensor:
-    max_frames = min(max_frames, max(v.shape[0] for v in videos))
-    output = []
-    for v in videos:
-        padded_v = torch.zeros(max_frames, *v.shape[1:])
-        padded_v[:v.shape[0]] = v
-        output.append(padded_v.permute(0, 2, 3, 1))
-    return torch.stack(output)
-
-
-def make_batch(examples: List[dataset.Example], config: TrainingConfig):
-    audio, video = [], []
-    for example in examples:
-        # frames x channels x height x width
-        video.append(example.video.permute(0, 3, 1, 2))
-        audio.append(resample_audio(example.audio))
-
-    audio = zero_pad_audio(
-        [one_hot_encode(a, config.model_config.input_channels) for a in audio]
-    )
-    video = zero_pad_video(resize_video(video))
-    return audio, video
-
-
-def train_model(config: TrainingConfig, batch_fps: List[str]):
     if config.pretrained_model_path:
         model = torch.load(config.pretrained_model_path)
     else:
@@ -152,33 +85,37 @@ def train_model(config: TrainingConfig, batch_fps: List[str]):
     )
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
-    raw_data = [dataset.load_video(fp) for fp in batch_fps]
-    print("RAW DATA", raw_data)
-    audio, video = make_batch(raw_data, config)
-    for i in range(1, config.n_training_steps + 1):
-        output = model(audio, video)
-        target = audio[:, :, model.receptive_fields:].argmax(1)
-        loss = F.cross_entropy(output, target)
-        optimizer.zero_grad()
-        loss.backward()
+    for epoch in range(1, config.n_epochs + 1):
+        for step, (audio, video, contexts, _) in enumerate(dataloader):
+            output = model(audio, video)
+            target = audio[:, :, model.receptive_fields:].argmax(1)
+            loss = F.cross_entropy(output, target)
+            optimizer.zero_grad()
+            loss.backward()
 
-        grad_norm = 0.
-        for param in model.parameters():
-            if param.grad is not None:
-                grad_norm += param.grad.data.norm(2).item() ** 2
-        grad_norm = grad_norm ** 0.5
-        loss = loss.data.item()
-        optimizer.step()
+            grad_norm = 0.
+            for param in model.parameters():
+                if param.grad is not None:
+                    grad_norm += param.grad.data.norm(2).item() ** 2
+            grad_norm = grad_norm ** 0.5
+            loss = loss.data.item()
+            optimizer.step()
 
-        logger.info(
-            f"[step {i}] loss={loss:0.08f}, grad_norm={grad_norm:0.08f}"
-        )
-        writer.add_scalar("loss/train", loss, i)
-        writer.add_scalar("grad_norm", grad_norm, i)
+            logger.info(
+                f"[epoch {epoch} | step {step}] "
+                f"loss={loss:0.08f}, "
+                f"grad_norm={grad_norm:0.08f}"
+            )
+            writer.add_scalar("loss/train", loss, epoch)
+            writer.add_scalar("grad_norm", grad_norm, epoch)
 
-        if  i % config.checkpoint_every == 0:
-            logger.info(f"creating checkpoint at step {i}")
-            fp = args.model_output_path / "checkpoints" / str(i)
+            if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
+                break
+
+        if epoch % config.checkpoint_every == 0:
+            # TODO: compute validation loss and write sample predictions
+            logger.info(f"creating checkpoint at epoch {epoch}")
+            fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
             output_samples = mu_law_decoding(
                 output.argmax(1), config.model_config.input_channels
@@ -207,7 +144,7 @@ if __name__ == "__main__":
 
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="[%(levelname)s] %(asctime)s:: %(message)s",
     )
 
@@ -216,7 +153,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
-    parser.add_argument("--n_training_steps", type=int, default=10)
+    parser.add_argument("--n_epochs", type=int, default=10)
+    parser.add_argument("--n_steps_per_epoch", type=int, default=None)
     parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)
@@ -250,7 +188,8 @@ if __name__ == "__main__":
         ),
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
-        n_training_steps=args.n_training_steps,
+        n_epochs=args.n_epochs,
+        n_steps_per_epoch=args.n_steps_per_epoch,
         pretrained_model_path=args.pretrained_model_path,
         model_output_path=args.model_output_path,
         tensorboard_dir=args.training_logs_path,
@@ -258,12 +197,6 @@ if __name__ == "__main__":
     with (args.model_output_path / "config.json").open("w") as f:
         f.write(config.to_json())
 
-    training_data_path = Path(args.dataset) / "train" / "breakdancing"
-    batch_fps = [
-        str(file_name) for file_name in training_data_path.glob("*.mp4")
-    ]
     logger.info(f"config: {config}")
-    logger.info(f"files: {batch_fps}")
-
-    model = train_model(config, batch_fps)
+    model = train_model(config, args.dataset)
     torch.save(model, args.model_output_path / "model.pth")

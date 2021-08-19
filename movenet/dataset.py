@@ -1,46 +1,218 @@
 """Create dataset for modeling."""
 
+import logging
+from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Dict
+from functools import partial
+from pathlib import Path
+from typing import Any, Dict, List
 
 try:
     from typing import TypedDict
 except:
     from typing_extensions import TypedDict
 
+import librosa
 import torch
 import torchaudio
+import torchaudio.functional
 import torchvision.io
+from pytorchvideo.transforms.functional import uniform_temporal_subsample
+from torchaudio.functional import mu_law_encoding
 from torchtyping import TensorType
+
+logger = logging.getLogger(__file__)
+
+
+AudioTensor = TensorType["batch", "channels", "frames"]
+VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
+
+MAX_AUDIO_FRAMES = 400000
+MAX_VIDEO_FRAMES = 300
+VIDEO_KERNEL_SIZE = (1, 10, 10)
 
 
 Info = TypedDict("info", video_fps=float, audio_fps=float)
 
+@dataclass
+class RawMetadata:
+    context: str
+    filepath: str
+
 
 @dataclass
 class Example:
+    context: str
+    filepath: str
     video: TensorType[float]
     audio: TensorType[float]
     info: Info
 
 
 def load_video(video_file: str):
-    return Example(*torchvision.io.read_video(video_file, pts_unit="pts"))
+    return Example(
+        "video",
+        video_file,
+        *torchvision.io.read_video(video_file, pts_unit="sec")
+    )
 
 
-def quantize_audio():
-    pass
+class KineticsDataset(torch.utils.data.Dataset):
+
+    def __init__(self, filepath: str, train=True):
+        self.filepath = Path(filepath)
+        self.train = train
+
+        # here we use the class label in the kinetics dataset as global
+        # context
+        self.contexts = [x.name for x in self.root_path.glob("*")]
+
+        self.index = []
+        for context in self.contexts:
+            for fp in (self.root_path / context).glob("*.mp4"):
+                if not "_raw" in fp.stem:
+                    # _raw files don't contain audio
+                    self.index.append(RawMetadata(context, str(fp)))
+
+        # self.index = [
+        #     RawMetadata("dancing_charleston", 'datasets/kinetics/train/dancing_charleston/SIZsUYJmxzE.mp4'),
+        #     RawMetadata("tap_dancing", 'datasets/kinetics/train/tap_dancing/r7c8VftCqkY.mp4'),
+        #     RawMetadata("salsa_dancing", 'datasets/kinetics/train/salsa_dancing/fEIaSeTqQsE.mp4'),
+        # ]
+
+        self.class_balance = {
+            k: v / len(self.index)
+            for k, v in Counter(x.context for x in self.index).items()
+        }
+
+    @property
+    def root_path(self):
+        return self.filepath / "train" if self.train else "valid"
+
+    def __len__(self):
+        return len(self.index)
+
+    def __getitem__(self, item):
+        return Example(
+            self.index[item].context,
+            self.index[item].filepath,
+            *torchvision.io.read_video(self.index[item].filepath)
+        )
 
 
-def create_dataset():
-    pass
+def get_dataloader(
+    filepath, input_channels: int, batch_size: int = 64, **kwargs
+):
+    return torch.utils.data.DataLoader(
+        KineticsDataset(filepath),
+        batch_size=batch_size,
+        collate_fn=partial(make_batch, input_channels),
+        **kwargs
+    )
+
+
+def make_batch(input_channels: int, examples: List[Example]):
+    logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
+    audio, video, contexts, filepaths = [], [], [], []
+    for example in examples:
+        # frames x channels x height x width
+        video.append(example.video.permute(0, 3, 1, 2))
+        try:
+            audio.append(resample_audio(example.audio))
+        except:
+            import ipdb; ipdb.set_trace()
+        contexts.append(example.context)
+        filepaths.append(example.filepath)
+
+    audio = torch.stack(
+        [one_hot_encode_audio(a, input_channels) for a in audio]
+    )
+    video = torch.stack(resize_video(video))
+    return audio, video, contexts, filepaths
+
+
+def resample_audio(
+    audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
+) -> TensorType["channels", "frames"]:
+    x = audio.mean(dim=0)
+    resampled_audio = torch.from_numpy(
+        librosa.resample(x.numpy(), x.shape[0], freq)
+    ).reshape(1, -1)
+    if resampled_audio.shape[1] > freq:
+        resampled_audio = resampled_audio[:, :freq]
+    return resampled_audio
+
+
+def normalize_audio(audio: TensorType["channels", "frames"]):
+    """Normalize audio to be between -1 and 1."""
+    if audio.sum() == 0:
+        # TODO: need to better handle cases where all values are 0
+        return audio
+    mean_centered = audio - audio.mean()
+    audio_output = mean_centered / mean_centered.abs().max()
+    assert audio_output.min() >= -1, "audio minimum can't be less than -1"
+    assert audio_output.max() <= 1, "audio maximum can't be more than 1"
+    return audio_output
+
+
+def one_hot_encode_audio(audio, input_channels):
+    # need to figure out a more principled way of combining two audio
+    # (left/right) channels into one
+    # https://stackoverflow.com/questions/37313320/how-to-convert-two-channel-audio-into-one-channel-audio
+    audio = normalize_audio(audio)
+    quantized = mu_law_encoding(audio, input_channels)
+    one_hot_enc = (
+        torch.zeros(input_channels, quantized.size(1))
+        .scatter_(0, quantized, 1)
+    )
+    assert (one_hot_enc.sum(dim=0) == 1).all(), "one hot encoding error"
+    return one_hot_enc
+
+
+def resize_video(
+    videos: List[TensorType["frames", "channels", "height", "width"]],
+    num_samples: int = MAX_VIDEO_FRAMES,
+) -> List[TensorType["frames", "channels", "height", "width"]]:
+    videos_resized = []
+    for video in videos:
+        sampled_video = uniform_temporal_subsample(
+            video, num_samples=num_samples, temporal_dim=0
+        )
+        if sampled_video.shape[0] > num_samples:
+            sampled_video = sampled_video[:num_samples]
+        video_resized = torch.zeros(
+            sampled_video.shape[0],
+            sampled_video.shape[1],
+            *VIDEO_KERNEL_SIZE[1:]
+        )
+        for i, frame in enumerate(sampled_video):
+            video_resized[i] = torchvision.transforms.functional.resize(
+                frame, size=VIDEO_KERNEL_SIZE[1:]
+            )
+        videos_resized.append(video_resized.permute(0, 2, 3, 1))
+    return videos_resized
 
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("video_file", type=str)
+    parser.add_argument("filepath", type=str)
     args = parser.parse_args()
 
-    load_video(args.video_file)
+    torch.manual_seed(1000)
+
+    dataloader = get_dataloader(
+        args.filepath,
+        input_channels=16,
+        batch_size=8,
+        shuffle=True,
+        num_workers=0,
+    )
+    print(f"iterating through {len(dataloader)} batches")
+    for i, (audio, video, contexts, filepaths) in enumerate(dataloader):
+        print(f"[batch {i}]")
+        print(f"audio: {audio.shape}")
+        print(f"video: {video.shape}")
+        print(f"contexts: {contexts}")
+        print(f"filepaths: {filepaths}")
