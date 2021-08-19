@@ -38,8 +38,8 @@ create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
 	grid datastore create --source kinetics-breakdancing.tar.gz --name kinetics-breakdancing
 
 .PHONY: create-kinetics
-create-kinetics: .kinetics
-	grid datastore create --source .kinetics --name kinetics-all
+create-kinetics: kinetics.tar.gz
+	grid datastore create --source kinetics.tar.gz --name kinetics
 
 # loop through entire kinetics dataset
 .PHONY: test-kinetics-dataloader
@@ -49,6 +49,14 @@ test-kinetics-dataloader:
 		--config /tmp/test-kinetics-dataloader.yml \
 		--ignore_warnings \
 		movenet/dataset.py /kinetics
+
+.PHONY: testing
+testing:
+	envsubst < config/test-kinetics-dataloader.yml > /tmp/test-kinetics-dataloader.yml && \
+	grid run \
+		--config /tmp/test-kinetics-dataloader.yml \
+		--ignore_warnings \
+		testing.py
 
 clean:
 	rm -rf \
