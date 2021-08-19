@@ -42,6 +42,7 @@ class ModelConfig:
 @dataclass
 class TrainingConfig:
     model_config: ModelConfig = ModelConfig()
+    batch_size: int = 3
     checkpoint_every: int = 25
     optimizer: str = "Adam"
     learning_rate: float = 0.0002
@@ -67,8 +68,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
 
     dataloader = dataset.get_dataloader(
         dataset_fp,
-        input_channels=16,
-        batch_size=3,
+        input_channels=config.model_config.input_channels,
+        batch_size=config.batch_size,
         shuffle=True,
         num_workers=0,
     )
@@ -152,6 +153,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
+    parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_steps_per_epoch", type=int, default=None)
@@ -186,6 +188,7 @@ if __name__ == "__main__":
             layer_size=args.layer_size,
             stack_size=args.stack_size,
         ),
+        batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
         n_epochs=args.n_epochs,
