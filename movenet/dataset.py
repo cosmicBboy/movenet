@@ -237,8 +237,6 @@ if __name__ == "__main__":
     print('-' * 50)
     print(f'GPUS: There are {torch.cuda.device_count()} GPUs on this machine')
     print('-' * 50)
-    print(f'PARAMS: I want to eat: {args.number} {args.food_item}')
-    print('-' * 50)
     print('i can run any ML library like numpy, pytorch lightning, sklearn pytorch, keras, tensorflow')
     print('torch:', torch.rand(1), 'numpy', np.random.rand(1))
 
