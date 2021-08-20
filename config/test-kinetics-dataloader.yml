@@ -7,18 +7,17 @@ compute:
 
   train:
     disk_size: 200
-    instance: t2.2xlarge
-    cpus: 7
+    instance: t2.xlarge
+    cpus: 1
     gpus: 0
     # memory: 16G
     # framework: torch
 
     datastore_name: kinetics-debug
     datastore_version: 5
-    datastore_mount_dir: /kinetics
+    datastore_mount_dir: /opt/datastore
 
     actions:
       on_image_build:
         - apt-get update -y
         - apt-get install wget libsndfile-dev -y
-        - pip install lightning-grid
