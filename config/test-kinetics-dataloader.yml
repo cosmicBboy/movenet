@@ -10,8 +10,8 @@ compute:
     instance: t2.2xlarge
     cpus: 7
     gpus: 0
-    memory: 32G
-    framework: torch
+    # memory: 16G
+    # framework: torch
 
     datastore_name: kinetics-debug
     datastore_version: 5
