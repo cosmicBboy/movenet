@@ -223,5 +223,29 @@ if __name__ == "__main__":
         writer.add_scalar("percent_progress", i / n_batches, i)
         print(f"[batch {i}/{n_batches}]")
     print("done iterating through dataset")
+
+    print("now doing some random stuff")
+    import numpy as np
+
+    offset = np.random.uniform(0, 5, 1)[0]
+    for x in range(1, 10):
+        y = -np.log(x) + offset + (np.sin(x) * 0.1)
+        writer.add_scalar('y=-log(x) + c + 0.1sin(x)', y, x)
+        writer.add_scalar('fake_metric', -y, x)
+
+    # print GPUs, params and random tensors
+    print('-' * 50)
+    print(f'GPUS: There are {torch.cuda.device_count()} GPUs on this machine')
+    print('-' * 50)
+    print(f'PARAMS: I want to eat: {args.number} {args.food_item}')
+    print('-' * 50)
+    print('i can run any ML library like numpy, pytorch lightning, sklearn pytorch, keras, tensorflow')
+    print('torch:', torch.rand(1), 'numpy', np.random.rand(1))
+
+    # write some artifacts
+    f = open("weights.pt", "a")
+    f.write("fake weights")
+    f.close()
+
     with open("time.txt", "a") as f:
         f.write(f"time taken: {time.time() - start}")
