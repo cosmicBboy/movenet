@@ -11,7 +11,7 @@ compute:
     cpus: 7
     gpus: 0
     memory: 32G
-    framework: torch
+    # framework: torch
 
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}

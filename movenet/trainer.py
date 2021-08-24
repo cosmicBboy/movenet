@@ -74,6 +74,19 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         num_workers=0,
     )
 
+    valid_dataloader = dataset.get_dataloader(
+        dataset_fp,
+        input_channels=config.model_config.input_channels,
+        batch_size=config.batch_size,
+        train=False,
+        shuffle=True,
+        num_workers=0,
+    )
+
+    # sample one batch to save for inspecting predictions, make sure it's
+    # consistent over the epochs
+    sample_batch_number = torch.randint(len(valid_dataloader), (1, )).item()
+
     if config.pretrained_model_path:
         model = torch.load(config.pretrained_model_path)
     else:
@@ -87,6 +100,9 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     # training loop
     writer = SummaryWriter(config.tensorboard_dir)
     for epoch in range(1, config.n_epochs + 1):
+
+        model.train()
+        train_loss = 0.0
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
             output = model(audio, video)
             target = audio[:, :, model.receptive_fields:].argmax(1)
@@ -100,18 +116,41 @@ def train_model(config: TrainingConfig, dataset_fp: str):
                     grad_norm += param.grad.data.norm(2).item() ** 2
             grad_norm = grad_norm ** 0.5
             loss = loss.data.item()
+            train_loss += loss
             optimizer.step()
 
             logger.info(
                 f"[epoch {epoch} | step {step}] "
-                f"loss={loss:0.08f}, "
-                f"grad_norm={grad_norm:0.08f}"
+                f"minibatch_loss={loss:0.08f}, "
+                f"minibatch_grad_norm={grad_norm:0.08f}"
             )
-            writer.add_scalar("loss/train", loss, epoch * step)
-            writer.add_scalar("grad_norm", grad_norm, epoch * step)
+            writer.add_scalar("minibatch/loss/train", loss, epoch * step)
+            writer.add_scalar("minibatch/grad_norm", grad_norm, epoch * step)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
+
+        model.eval()
+        val_loss = 0.0
+        sample_output = None
+        for step, (audio, video, contexts, _) in enumerate(
+            valid_dataloader
+        ):
+            output = model(audio, video)
+            target = audio[:, :, model.receptive_fields:].argmax(1)
+            val_loss += F.cross_entropy(output, target).item()
+            if step == sample_batch_number:
+                sample_output = output
+
+        train_loss /= len(dataloader)
+        val_loss /= len(valid_dataloader)
+        logger.info(
+            f"[epoch {epoch}] "
+            f"train_loss={train_loss:0.08f}, "
+            f"val_loss={loss:0.08f}"
+        )
+        writer.add_scalar("loss/train", train_loss, epoch)
+        writer.add_scalar("loss/val", val_loss, epoch)
 
         if epoch % config.checkpoint_every == 0:
             # TODO: compute validation loss and write sample predictions
@@ -119,7 +158,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
             output_samples = mu_law_decoding(
-                output.argmax(1), config.model_config.input_channels
+                sample_output.argmax(1), config.model_config.input_channels
             )
             torch.save(model, fp / "model.pth")
             torch.save(output_samples, fp / "output_samples.pth")

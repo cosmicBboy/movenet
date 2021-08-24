@@ -82,7 +82,7 @@ class KineticsDataset(torch.utils.data.Dataset):
 
     @property
     def root_path(self):
-        return self.filepath / "train" if self.train else "valid"
+        return self.filepath / ("train" if self.train else "valid")
 
     def __len__(self):
         return len(self.index)
@@ -96,10 +96,10 @@ class KineticsDataset(torch.utils.data.Dataset):
 
 
 def get_dataloader(
-    filepath, input_channels: int, batch_size: int = 64, **kwargs
+    filepath, input_channels: int, batch_size: int = 64, train=True, **kwargs
 ):
     return torch.utils.data.DataLoader(
-        KineticsDataset(filepath),
+        KineticsDataset(filepath, train=train),
         batch_size=batch_size,
         collate_fn=partial(make_batch, input_channels),
         **kwargs
