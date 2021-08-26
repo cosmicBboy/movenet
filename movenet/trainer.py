@@ -64,6 +64,35 @@ class TrainingConfig:
     )
 
 
+def training_step(model, optimizer, audio, video):
+    if torch.cuda.is_available():
+        audio, video = audio.to("cuda"), video.to("cuda")
+    output = model(audio, video)
+    target = audio[:, :, model.receptive_fields:].argmax(1)
+    loss = F.cross_entropy(output, target)
+    optimizer.zero_grad()
+    loss.backward()
+
+    grad_norm = 0.
+    for param in model.parameters():
+        if param.grad is not None:
+            grad_norm += param.grad.data.norm(2).item() ** 2
+    grad_norm = grad_norm ** 0.5
+    loss = loss.data.item()
+    optimizer.step()
+    return loss, grad_norm
+
+
+@torch.no_grad()
+def validation_step(model, audio, video):
+    if torch.cuda.is_available():
+        audio, video = audio.to("cuda"), video.to("cuda")
+    output = model(audio, video)
+    target = audio[:, :, model.receptive_fields:].argmax(1)
+    loss = F.cross_entropy(output, target).item()
+    return loss, output
+
+
 def train_model(config: TrainingConfig, dataset_fp: str):
 
     dataloader = dataset.get_dataloader(
@@ -107,45 +136,29 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         model.train()
         train_loss = 0.0
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
-            if torch.cuda.is_available():
-                audio, video = audio.to("cuda"), video.to("cuda")
-            output = model(audio, video)
-            target = audio[:, :, model.receptive_fields:].argmax(1)
-            loss = F.cross_entropy(output, target)
-            optimizer.zero_grad()
-            loss.backward()
-
-            grad_norm = 0.
-            for param in model.parameters():
-                if param.grad is not None:
-                    grad_norm += param.grad.data.norm(2).item() ** 2
-            grad_norm = grad_norm ** 0.5
-            loss = loss.data.item()
+            loss, grad_norm = training_step(model, optimizer, audio, video)
             train_loss += loss
-            optimizer.step()
 
+            progress = step / len(dataloader)
             logger.info(
                 f"[epoch {epoch} | step {step}] "
+                f"batch_progress={progress}, "
                 f"minibatch_loss={loss:0.08f}, "
                 f"minibatch_grad_norm={grad_norm:0.08f}"
             )
+            writer.add_scalar("minibatch/progress/train", progress)
             writer.add_scalar("minibatch/loss/train", loss, epoch * step)
             writer.add_scalar("minibatch/grad_norm", grad_norm, epoch * step)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
 
-        model.eval()
         val_loss = 0.0
         sample_output = None
         for step, (audio, video, contexts, _) in enumerate(
             valid_dataloader
         ):
-            if torch.cuda.is_available():
-                audio, video = audio.to("cuda"), video.to("cuda")
-            output = model(audio, video)
-            target = audio[:, :, model.receptive_fields:].argmax(1)
-            val_loss += F.cross_entropy(output, target).item()
+            loss, output = validation_step(model, audio, video)
             if step == sample_batch_number:
                 sample_output = output
 
@@ -156,11 +169,11 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             f"train_loss={train_loss:0.08f}, "
             f"val_loss={loss:0.08f}"
         )
+        writer.add_scalar("epochs", epoch, epoch)
         writer.add_scalar("loss/train", train_loss, epoch)
         writer.add_scalar("loss/val", val_loss, epoch)
 
         if epoch % config.checkpoint_every == 0:
-            # TODO: compute validation loss and write sample predictions
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)

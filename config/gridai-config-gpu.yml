@@ -7,7 +7,7 @@ compute:
 
   train:
     disk_size: 300
-    instance: p2.xlarge
+    instance: p3.2xlarge
     cpus: 3
     gpus: 1
     memory: 60G
