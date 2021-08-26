@@ -140,6 +140,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             train_loss += loss
 
             progress = step / len(dataloader)
+            mean_loss = loss / config.batch_size
             logger.info(
                 f"[epoch {epoch} | step {step}] "
                 f"batch_progress={progress}, "
@@ -147,7 +148,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
                 f"minibatch_grad_norm={grad_norm:0.08f}"
             )
             writer.add_scalar("minibatch/progress/train", progress)
-            writer.add_scalar("minibatch/loss/train", loss, epoch * step)
+            writer.add_scalar("minibatch/loss/train", mean_loss, epoch * step)
             writer.add_scalar("minibatch/grad_norm", grad_norm, epoch * step)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
@@ -162,8 +163,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             if step == sample_batch_number:
                 sample_output = output
 
-        train_loss /= len(dataloader)
-        val_loss /= len(valid_dataloader)
+        train_loss /= len(dataloader.dataset)
+        val_loss /= len(valid_dataloader.dataset)
         logger.info(
             f"[epoch {epoch}] "
             f"train_loss={train_loss:0.08f}, "
