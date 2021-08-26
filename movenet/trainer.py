@@ -90,7 +90,7 @@ def validation_step(model, audio, video):
     output = model(audio, video)
     target = audio[:, :, model.receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target).item()
-    return loss, output
+    return loss, output.to("cpu")
 
 
 def train_model(config: TrainingConfig, dataset_fp: str):
