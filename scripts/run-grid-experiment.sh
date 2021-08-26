@@ -4,7 +4,7 @@
 set -e
 
 source env/gridai
-envsubst < gridai-config.yml > /tmp/gridai-config.yml
+envsubst < config/gridai-config.yml > /tmp/gridai-config.yml
 grid run \
     --config /tmp/gridai-config.yml \
     movenet/trainer.py $@

@@ -1,9 +1,9 @@
-GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-breakdancing \
-	GRID_DATASTORE_VERSION=2 \
-	GRID_DATASTORE_MOUNT_DIR=/opt/datastore
+GRID_DATASTORE_NAME=kinetics-breakdancing
+GRID_DATASTORE_VERSION=2
+GRID_DATASTORE_MOUNT_DIR=/opt/datastore
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
-	--n_epochs 50 \
+	--n_epochs 3 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
 	--residual_channels 64 \
@@ -13,4 +13,6 @@ TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 
 .PHONY: train
 train:
-	${GRID_OPTS} scripts/run-grid-experiment.sh ${TRAIN_DEBUG_OPTS}
+	envsubst < config/gridai-config-gpu.yml > /tmp/gridai-config-gpu.yml && \
+	grid run --config /tmp/gridai-config.yml \
+		movenet/trainer.py ${TRAIN_DEBUG_OPTS}

@@ -69,23 +69,7 @@ Download the dataset
 ```
 cd kinetics-downloader
 python download.py --categories "dancing" --num-workers <NUM_WORKERS> -v
-python videos_to_frames.py --all --num-workers <NUM_WORKERS>
-python videos_to_sound.py --all --num-workers <NUM_WORKERS>
 cd .. && cp -R kinetics-downloader/dataset datasets/kinetics
-```
-
-### Dancing to Music Dataset
-
-Download dataset
-
-```
-./scripts/dancing-to-music-dataset.sh
-```
-
-Download models
-
-```
-./scripts/dancing-to-music-models.sh
 ```
 
 ### Running an Experiment on `gridai`

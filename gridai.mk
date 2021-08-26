@@ -17,6 +17,12 @@ datasets/kinetics_debug:
 	cp datasets/kinetics/valid/breakdancing/3ob3NvTp-YA.mp4 datasets/kinetics_debug/valid/breakdancing
 	cp datasets/kinetics/valid/breakdancing/K-81lIy6PoI.mp4 datasets/kinetics_debug/valid/breakdancing
 
+datasets/kinetics_breakdancing:
+	@mkdir -p datasets/kinetics_breakdancing/train/breakdancing
+	mkdir -p datasets/kinetics_breakdancing/valid/breakdancing
+	cp -R datasets/kinetics/train/breakdancing datasets/kinetics_breakdancing/train/breakdancing
+	cp -R datasets/kinetics/valid/breakdancing datasets/kinetics_breakdancing/valid/breakdancing
+
 kinetics-breakdancing.tar.gz:
 	tar -C datasets/kinetics -cvzf kinetics-breakdancing.tar.gz \
 		train/breakdancing valid/breakdancing
@@ -42,8 +48,8 @@ create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
 	grid datastore create --source kinetics-breakdancing.tar.gz --name kinetics-breakdancing
 
 .PHONY: create-kinetics
-create-kinetics: kinetics.tar.gz
-	grid datastore create --source kinetics.tar.gz --name kinetics --compression
+create-kinetics: datasets/kinetics
+	grid datastore create --source datasets/kinetics --name kinetics --compression
 
 # loop through entire kinetics dataset
 .PHONY: test-kinetics-dataloader
