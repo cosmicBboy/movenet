@@ -67,6 +67,7 @@ class KineticsDataset(torch.utils.data.Dataset):
         # here we use the class label in the kinetics dataset as global
         # context
         self.contexts = [x.name for x in self.root_path.glob("*")]
+        logger.info(f"dataset train={train} with contexts: {self.contexts}")
 
         self.index = []
         for context in self.contexts:
@@ -79,6 +80,10 @@ class KineticsDataset(torch.utils.data.Dataset):
             k: v / len(self.index)
             for k, v in Counter(x.context for x in self.index).items()
         }
+        logger.info(
+            f"dataset index contains {len(self.index)} data points with class "
+            f"balance: {self.class_balance}"
+        )
 
     @property
     def root_path(self):

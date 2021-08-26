@@ -34,11 +34,6 @@ kinetics.tar.gz:
 		--exclude '**/*.mkv' \
 		-C datasets/kinetics -cvzf kinetics.tar.gz train valid
 
-.kinetics:
-	mkdir -p .kinetics/train .kinetics/valid
-	cp -R datasets/kinetics/train .kinetics/
-	cp -R datasets/kinetics/valid .kinetics/
-
 .PHONY: create-kinetics-debug
 create-kinetics-debug: datasets/kinetics_debug
 	grid datastore create --source datasets/kinetics_debug --name kinetics-debug-b
