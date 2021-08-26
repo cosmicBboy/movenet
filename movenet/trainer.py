@@ -90,7 +90,7 @@ def validation_step(model, audio, video):
     output = model(audio, video)
     target = audio[:, :, model.receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target).item()
-    return loss, output.to("cpu")
+    return loss, output
 
 
 def train_model(config: TrainingConfig, dataset_fp: str):
@@ -180,7 +180,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             fp.mkdir(parents=True)
             output_samples = mu_law_decoding(
                 sample_output.argmax(1), config.model_config.input_channels
-            )
+            ).to("cpu")
             torch.save(model, fp / "model.pth")
             torch.save(output_samples, fp / "output_samples.pth")
             for i, sample in enumerate(output_samples):
