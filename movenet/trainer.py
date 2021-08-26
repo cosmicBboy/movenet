@@ -79,7 +79,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         input_channels=config.model_config.input_channels,
         batch_size=config.batch_size,
         train=False,
-        shuffle=True,
+        shuffle=False,
         num_workers=0,
     )
 

@@ -69,7 +69,8 @@ Download the dataset
 ```
 cd kinetics-downloader
 python download.py --categories "dancing" --num-workers <NUM_WORKERS> -v
-cd .. && cp -R kinetics-downloader/dataset datasets/kinetics
+cd ..
+cp -R kinetics-downloader/dataset datasets/kinetics
 ```
 
 ### Running an Experiment on `gridai`
