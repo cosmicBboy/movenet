@@ -1,12 +1,9 @@
 av
-dask
 dataclasses==0.6
 dataclasses-json==0.5.2
 joblib
 librosa==0.8.1
 numpy==1.20.3
-opencv-python
-opencv_python_headless
 tensorboard
 tqdm
 torch==1.9.0

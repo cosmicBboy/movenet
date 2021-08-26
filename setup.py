@@ -10,7 +10,6 @@ setup(
     install_requires=[
         "av",
         "dataclasses_json",
-        "opencv-python",
         "torch",
         "torchvision",
         "torchaudio",

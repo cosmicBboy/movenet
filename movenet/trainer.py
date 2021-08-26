@@ -92,6 +92,9 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     else:
         model = WaveNet(**asdict(config.model_config))
 
+    if torch.cuda.is_available():
+        model = model.cuda()
+
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         lr=config.learning_rate,
@@ -104,6 +107,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         model.train()
         train_loss = 0.0
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
+            if torch.cuda.is_available():
+                audio, video = audio.to("cuda"), video.to("cuda")
             output = model(audio, video)
             target = audio[:, :, model.receptive_fields:].argmax(1)
             loss = F.cross_entropy(output, target)
@@ -136,6 +141,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         for step, (audio, video, contexts, _) in enumerate(
             valid_dataloader
         ):
+            if torch.cuda.is_available():
+                audio, video = audio.to("cuda"), video.to("cuda")
             output = model(audio, video)
             target = audio[:, :, model.receptive_fields:].argmax(1)
             val_loss += F.cross_entropy(output, target).item()

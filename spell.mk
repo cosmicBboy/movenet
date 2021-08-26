@@ -2,7 +2,9 @@
 
 .PHONY: train-debug
 train-debug:
-	spell run --machine-type cpu-big \
+	spell run \
+		--project dance2music \
+		--machine-type cpu-big \
 		--mount uploads/kinetics-debug:/mnt/dataset \
 		--pip-req requirements.txt \
 		--apt libsndfile-dev \
