@@ -14,5 +14,4 @@ TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 .PHONY: train
 train:
 	envsubst < config/gridai-config-gpu.yml > /tmp/gridai-config-gpu.yml && \
-	grid run --config /tmp/gridai-config.yml \
-		movenet/trainer.py ${TRAIN_DEBUG_OPTS}
+	grid run --config /tmp/gridai-config-gpu.yml movenet/trainer.py ${TRAIN_DEBUG_OPTS}

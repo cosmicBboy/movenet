@@ -6,11 +6,11 @@ compute:
     vendor: aws
 
   train:
-    disk_size: 512
-    instance: t2.2xlarge
-    cpus: 7
-    gpus: 0
-    memory: 32G
+    disk_size: 300
+    instance: p2.xlarge
+    cpus: 3
+    gpus: 1
+    memory: 60G
     framework: torch
 
     datastore_name: ${GRID_DATASTORE_NAME}
