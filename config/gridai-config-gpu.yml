@@ -27,4 +27,3 @@ compute:
         - grid login --username ${GRID_USERNAME} --key ${GRID_API_KEY}
         - grid artifacts ${GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS} --download_dir /artifacts || echo 'skip artifacts download'
         - echo "data store contents" && ls /opt/datastore/*
-        - echo "dataset size" && ls datasets/kinetics/**/* | grep '.mp4' | wc -l
