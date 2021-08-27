@@ -75,6 +75,7 @@ class KineticsDataset(torch.utils.data.Dataset):
                 if "_raw" in fp.stem or fp.stem.startswith("."):
                     logging.info(f"skipping file {fp}")
                     continue
+                logging.info(f"adding {fp} from context {context}")
                 self.index.append(RawMetadata(context, str(fp)))
 
         self.class_balance = {
@@ -85,7 +86,6 @@ class KineticsDataset(torch.utils.data.Dataset):
             f"dataset index contains {len(self.index)} data points with class "
             f"balance: {self.class_balance}"
         )
-        import ipdb; ipdb.set_trace()
 
     @property
     def root_path(self):
