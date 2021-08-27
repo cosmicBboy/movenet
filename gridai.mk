@@ -44,7 +44,7 @@ create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
 
 .PHONY: create-kinetics
 create-kinetics: datasets/kinetics
-	grid datastore create --source datasets/kinetics --name kinetics --compression
+	grid datastore create --source datasets/kinetics --name kinetics
 
 # loop through entire kinetics dataset
 .PHONY: test-kinetics-dataloader

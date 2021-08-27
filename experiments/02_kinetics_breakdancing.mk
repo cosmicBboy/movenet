@@ -20,7 +20,7 @@ train-breakdancing:
 .PHONY: train
 train:
 	GRID_DATASTORE_NAME=kinetics \
-	GRID_DATASTORE_VERSION=14 \
+	GRID_DATASTORE_VERSION=16 \
 	GRID_DATASTORE_MOUNT_DIR=/opt/datastore \
 	envsubst < config/gridai-config-gpu.yml > /tmp/gridai-config-gpu.yml && \
 	grid run --config /tmp/gridai-config-gpu.yml movenet/trainer.py ${TRAIN_DEBUG_OPTS}
