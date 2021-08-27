@@ -12,6 +12,7 @@ compute:
     gpus: 1
     memory: 60G
     framework: torch
+    scratch_size: 4
 
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}
