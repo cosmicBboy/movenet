@@ -160,6 +160,7 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             valid_dataloader
         ):
             loss, output = validation_step(model, audio, video)
+            val_loss += loss
             if step == sample_batch_number:
                 sample_output = output
 

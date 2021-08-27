@@ -28,11 +28,7 @@ kinetics-breakdancing.tar.gz:
 		train/breakdancing valid/breakdancing
 
 kinetics.tar.gz:
-	tar --exclude '**/*.part' \
-		--exclude '**/*.ytdl' \
-		--exclude '**/*_raw*' \
-		--exclude '**/*.mkv' \
-		-C datasets/kinetics -cvzf kinetics.tar.gz train valid
+	tar -C datasets/kinetics -cvzf kinetics.tar.gz .
 
 .PHONY: create-kinetics-debug
 create-kinetics-debug: datasets/kinetics_debug
@@ -43,8 +39,8 @@ create-kinetics-breakdancing: kinetics-breakdancing.tar.gz
 	grid datastore create --source kinetics-breakdancing.tar.gz --name kinetics-breakdancing
 
 .PHONY: create-kinetics
-create-kinetics: datasets/kinetics
-	grid datastore create --source datasets/kinetics --name kinetics
+create-kinetics: kinetics.tar.gz
+	grid datastore create --source kinetics.tar.gz --name kinetics-20210826
 
 # loop through entire kinetics dataset
 .PHONY: test-kinetics-dataloader
