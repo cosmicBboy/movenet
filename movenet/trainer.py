@@ -225,10 +225,14 @@ if __name__ == "__main__":
     parser.add_argument("--stack_size", type=int, default=3)
     parser.add_argument(
         "--pretrained_model_path",
-        type=lambda x: x if x is None else Path(x),
+        type=lambda x: None if x is None or x == "" else Path(x),
         default=None,
     )
-    parser.add_argument("--pretrained_run_exp_name", type=str, default=None)
+    parser.add_argument(
+        "--pretrained_run_exp_name",
+        type=lambda x: None if x is None or x == "" else x,
+        default=None,
+    )
     parser.add_argument(
         "--model_output_path",
         type=Path,
