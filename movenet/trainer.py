@@ -1,6 +1,7 @@
 """Train the movenet model."""
 
 import logging
+import shutil
 from dataclasses import dataclass, asdict, field
 from dataclasses_json import dataclass_json, config
 from pathlib import Path
@@ -156,13 +157,13 @@ def train_model(config: TrainingConfig, dataset_fp: str):
 
         val_loss = 0.0
         sample_output = None
-        for step, (audio, video, contexts, _) in enumerate(
-            valid_dataloader
-        ):
+        sample_fps = None
+        for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
             loss, output = validation_step(model, audio, video)
             val_loss += loss
             if step == sample_batch_number:
                 sample_output = output
+                sample_fps = fps
 
         train_loss /= len(dataloader.dataset)
         val_loss /= len(valid_dataloader.dataset)
@@ -184,9 +185,17 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             ).to("cpu")
             torch.save(model, fp / "model.pth")
             torch.save(output_samples, fp / "output_samples.pth")
-            for i, sample in enumerate(output_samples):
+            for i, (sample_fp, sample) in enumerate(
+                zip(sample_fps, output_samples)
+            ):
+                sample_fp = Path(sample_fp)
+                # save original video files
+                shutil.copyfile(
+                    sample_fp, fp / f"original_video_{i}_{sample_fp.stem}.mp4"
+                )
+                # save generated mp3 file
                 torchaudio.save(
-                    str(fp / f"output_sample_{i}.mp3"),
+                    str(fp / f"generated_autio_{i}_{sample_fp.stem}.mp3"),
                     # mp3 requires 2 channels (left, right)
                     torch.stack([sample, sample]),
                     sample_rate=sample.shape[0],
@@ -197,10 +206,6 @@ def train_model(config: TrainingConfig, dataset_fp: str):
 
 if __name__ == "__main__":
     import argparse
-    import json
-    import os
-    import subprocess
-    import time
     from pathlib import Path
     from datetime import datetime
 
