@@ -206,6 +206,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
 
 if __name__ == "__main__":
     import argparse
+    import os
+    import subprocess
     from pathlib import Path
     from datetime import datetime
 
@@ -214,6 +216,30 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="[%(levelname)s] %(asctime)s:: %(message)s",
     )
+
+    try:
+        subprocess.call(["ls", "/artifacts"])
+    except Exception as e:
+        print(f"skipping artifacts printing: {e}")
+
+    try:
+        subprocess.call([
+            "grid",
+            "login",
+            "--username",
+            os.getenv("GRID_USERNAME"),
+            "--key",
+            os.getenv("GRID_API_KEY"),
+        ])
+        subprocess.call([
+            "grid",
+            "artifacts",
+            os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS"),
+            "--download_dir",
+            "artifacts"
+        ])
+    except Exception as e:
+        print(f"download artifacts failed: {e}")
 
     MAX_RETRIES = 10
 

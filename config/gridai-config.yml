@@ -16,7 +16,7 @@ compute:
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
-
+    
     dependency_file_info:
       package_manager: pip
       path: ./requirements.txt
@@ -26,7 +26,6 @@ compute:
         - apt-get update -y
         - apt-get install wget libsndfile-dev -y
         - pip install lightning-grid
-
       on_before_training_start:
         - grid login --username ${GRID_USERNAME} --key ${GRID_API_KEY}
         - grid artifacts ${GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS} --download_dir /artifacts || echo 'skip artifacts download'
