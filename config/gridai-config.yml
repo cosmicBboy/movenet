@@ -11,11 +11,15 @@ compute:
     cpus: 7
     gpus: 0
     memory: 32G
-    # framework: torch
+    framework: torch
 
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
+
+    dependency_file_info:
+      package_manager: pip
+      path: ./requirements.txt
 
     actions:
       on_image_build:
