@@ -44,3 +44,26 @@ train:
 			--model_output_path models \
 			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
 			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}"
+
+
+.PHONY: train-spot
+train-spot:
+	GRID_DATASTORE_NAME=kinetics-all \
+	GRID_DATASTORE_VERSION=1 \
+	GRID_DATASTORE_MOUNT_DIR=/opt/datastore \
+	GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=${PRETRAINED_RUN_EXP_NAME} \
+	envsubst < config/gridai-config-gpu.yml > /tmp/gridai-config-gpu.yml && \
+	grid run --config /tmp/gridai-config-gpu.yml --ignore_warnings \
+		movenet/trainer.py \
+			--dataset /opt/datastore \
+			--n_epochs ${N_EPOCHS} \
+			--batch_size 2 \
+			--learning_rate 0.0003 \
+			--input_channels 64 \
+			--residual_channels 64 \
+			--layer_size 3 \
+			--stack_size 3 \
+			--checkpoint_every 1 \
+			--model_output_path models \
+			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
+			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}"

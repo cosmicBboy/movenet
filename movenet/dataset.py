@@ -73,9 +73,9 @@ class KineticsDataset(torch.utils.data.Dataset):
         for context in self.contexts:
             for fp in (self.root_path / context).glob("*.mp4"):
                 if "_raw" in fp.stem or fp.stem.startswith("."):
-                    logging.info(f"skipping file {fp}")
+                    logging.debug(f"skipping file {fp}")
                     continue
-                logging.info(f"adding {fp} from context {context}")
+                logging.debug(f"adding {fp} from context {context}")
                 self.index.append(RawMetadata(context, str(fp)))
 
         self.class_balance = {
