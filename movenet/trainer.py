@@ -223,8 +223,9 @@ if __name__ == "__main__":
         logging.info(f"skipping artifacts printing: {e}")
 
     try:
-        logging.info(os.environ)
         logging.info("Downloading artifacts")
+        for key, value in os.environ.items():
+            logging.info(key, value)
         logging.info(str(os.getenv("FOOBAR")))
         logging.info(str(os.getenv("USERNAME")))
         logging.info(str(os.getenv("API_KEY")))
