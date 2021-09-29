@@ -17,6 +17,10 @@ compute:
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
+    environment:
+      GRID_USERNAME: ${GRID_USERNAME}
+      GRID_API_KEY: ${GRID_API_KEY}
+
     dependency_file_info:
       package_manager: pip
       path: ./requirements.txt

@@ -223,6 +223,10 @@ if __name__ == "__main__":
         print(f"skipping artifacts printing: {e}")
 
     try:
+        print("Downloading artifacts")
+        print(str(os.getenv("GRID_USERNAME")))
+        print(str(os.getenv("GRID_API_KEY")))
+        print(str(os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS")))
         subprocess.call([
             "grid",
             "login",
