@@ -236,7 +236,7 @@ if __name__ == "__main__":
             "artifacts",
             os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS"),
             "--download_dir",
-            "artifacts"
+            "/artifacts"
         ])
     except Exception as e:
         print(f"download artifacts failed: {e}")
