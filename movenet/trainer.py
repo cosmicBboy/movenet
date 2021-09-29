@@ -223,6 +223,7 @@ if __name__ == "__main__":
         logging.info(f"skipping artifacts printing: {e}")
 
     try:
+        logging.info(os.environ)
         logging.info("Downloading artifacts")
         logging.info(str(os.getenv("FOOBAR")))
         logging.info(str(os.getenv("USERNAME")))
