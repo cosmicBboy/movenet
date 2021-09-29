@@ -220,25 +220,26 @@ if __name__ == "__main__":
     try:
         subprocess.call(["ls", "/artifacts"])
     except Exception as e:
-        print(f"skipping artifacts printing: {e}")
+        logging.info(f"skipping artifacts printing: {e}")
 
     try:
-        print("Downloading artifacts")
-        print(str(os.getenv("GRID_USERNAME")))
-        print(str(os.getenv("GRID_API_KEY")))
-        print(str(os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS")))
+        logging.info("Downloading artifacts")
+        logging.info(str(os.getenv("FOOBAR")))
+        logging.info(str(os.getenv("USERNAME")))
+        logging.info(str(os.getenv("API_KEY")))
+        logging.info(str(os.getenv("EXPERIMENT_ID")))
         subprocess.call([
             "grid",
             "login",
             "--username",
-            str(os.getenv("GRID_USERNAME")),
+            str(os.getenv("USERNAME")),
             "--key",
-            str(os.getenv("GRID_API_KEY")),
+            str(os.getenv("API_KEY")),
         ])
         subprocess.call([
             "grid",
             "artifacts",
-            str(os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS")),
+            str(os.getenv("EXPERIMENT_ID")),
             "--download_dir",
             "/artifacts"
         ])

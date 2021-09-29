@@ -18,8 +18,10 @@ compute:
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
     environment:
-      GRID_USERNAME: ${GRID_USERNAME}
-      GRID_API_KEY: ${GRID_API_KEY}
+      FOOBAR: testing
+      USERNAME: ${GRID_USERNAME}
+      API_KEY: ${GRID_API_KEY}
+      EXPERIMENT_ID: ${GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS}
 
     dependency_file_info:
       package_manager: pip
