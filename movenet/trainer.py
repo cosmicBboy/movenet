@@ -224,8 +224,7 @@ if __name__ == "__main__":
 
     try:
         logging.info("Downloading artifacts")
-        for key, value in os.environ.items():
-            logging.info(str(key), str(value))
+        logging.info(os.environ.keys())
         logging.info(str(os.getenv("FOOBAR")))
         logging.info(str(os.getenv("USERNAME")))
         logging.info(str(os.getenv("API_KEY")))
