@@ -227,14 +227,14 @@ if __name__ == "__main__":
             "grid",
             "login",
             "--username",
-            os.getenv("GRID_USERNAME"),
+            str(os.getenv("GRID_USERNAME")),
             "--key",
-            os.getenv("GRID_API_KEY"),
+            str(os.getenv("GRID_API_KEY")),
         ])
         subprocess.call([
             "grid",
             "artifacts",
-            os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS"),
+            str(os.getenv("GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS")),
             "--download_dir",
             "/artifacts"
         ])
