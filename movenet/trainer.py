@@ -217,36 +217,6 @@ if __name__ == "__main__":
         format="[%(levelname)s] %(asctime)s:: %(message)s",
     )
 
-    try:
-        subprocess.call(["ls", "/artifacts"])
-    except Exception as e:
-        logging.info(f"skipping artifacts printing: {e}")
-
-    try:
-        logging.info("Downloading artifacts")
-        logging.info(os.environ.keys())
-        logging.info(str(os.getenv("FOOBAR")))
-        logging.info(str(os.getenv("USERNAME")))
-        logging.info(str(os.getenv("API_KEY")))
-        logging.info(str(os.getenv("EXPERIMENT_ID")))
-        subprocess.call([
-            "grid",
-            "login",
-            "--username",
-            str(os.getenv("USERNAME")),
-            "--key",
-            str(os.getenv("API_KEY")),
-        ])
-        subprocess.call([
-            "grid",
-            "artifacts",
-            str(os.getenv("EXPERIMENT_ID")),
-            "--download_dir",
-            "/artifacts"
-        ])
-    except Exception as e:
-        print(f"download artifacts failed: {e}")
-
     MAX_RETRIES = 10
 
     parser = argparse.ArgumentParser()
@@ -278,7 +248,30 @@ if __name__ == "__main__":
     parser.add_argument(
         "--training_logs_path", type=Path, default=Path("training_logs"),
     )
+    # temporary hack until grid environment issue is solved
+    parser.add_argument("--grid_user_name", type=str, default="")
+    parser.add_argument("--grid_api_key", type=str, default="")
     args = parser.parse_args()
+
+    try:
+        logging.info("Downloading artifacts")
+        subprocess.call([
+            "grid",
+            "login",
+            "--username",
+            args.grid_user_name,
+            "--key",
+            args.grid_api_key,
+        ])
+        subprocess.call([
+            "grid",
+            "artifacts",
+            args.pretrained_run_exp_name,
+            "--download_dir",
+            "/artifacts"
+        ])
+    except Exception as e:
+        print(f"download artifacts failed: {e}")
 
     logger.info(f"starting training run")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)

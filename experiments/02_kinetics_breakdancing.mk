@@ -43,7 +43,9 @@ train:
 			--checkpoint_every 1 \
 			--model_output_path models \
 			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
-			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}"
+			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
+			--grid_user_name "${GRID_USERNAME}" \
+			--grid_key "${GRID_API_KEY}"
 
 
 .PHONY: train-spot
@@ -66,4 +68,6 @@ train-spot:
 			--checkpoint_every 1 \
 			--model_output_path models \
 			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
-			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}"
+			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
+			--grid_user_name "${GRID_USERNAME}" \
+			--grid_key "${GRID_API_KEY}"
