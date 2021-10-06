@@ -7,7 +7,7 @@ ARG WANDB_API_KEY
 
 # these two lines are mandatory
 WORKDIR /gridai/project
-COPY ./movenet .
+COPY ./movenet ./movenet
 COPY ./setup.py .
 COPY ./requirements.txt .
 
