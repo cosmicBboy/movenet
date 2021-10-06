@@ -25,7 +25,8 @@ compute:
       on_image_build:
         - apt-get update -y
         - apt-get install wget libsndfile-dev -y
-        - pip install lightning-grid wandb
+        - pip install lightning-grid
+        - pip install -r requirements.txt
 
       on_before_training_start:
         - grid login --username ${GRID_USERNAME} --key ${GRID_API_KEY}

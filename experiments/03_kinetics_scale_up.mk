@@ -16,7 +16,8 @@ N_EPOCHS?=1
 
 .PHONY: train-debug
 train-debug:
-	grid run --dockerfile Dockerfile \
+	envsubst < Dockerfile > /tmp/movenet/Dockerfile && \
+	grid run --dockerfile /tmp/movenet/Dockerfile \
 		--instance_type t2.2xlarge \
 		--cpus 7  \
 		--scratch_size 512 \
