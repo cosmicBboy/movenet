@@ -23,7 +23,7 @@ RUN pip install av \
     dataclasses-json==0.5.2 \
     joblib \
     librosa==0.8.1 \
-    numpy==1.20.3 \
+    numpy \
     torch==1.9.0 \
     torchvision==0.10.0 \
     torchaudio==0.9.0 \
@@ -31,11 +31,10 @@ RUN pip install av \
     typeguard \
     typing-extensions==3.7.4.3 \
     pytorchvideo==0.1.2 \
-    dask \
     ipdb==0.13.7 \
     opencv-python \
     opencv-python-headless==4.5.3.56 \
-    tensorflow \
+    tensorflow==2.6.0 \
     tensorboard \
     tqdm
 
