@@ -13,5 +13,6 @@ setup(
         "torch",
         "torchvision",
         "torchaudio",
+        "wandb",
     ],
 )
