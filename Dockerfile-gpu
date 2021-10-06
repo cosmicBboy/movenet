@@ -1,7 +1,8 @@
 # base image you want to use
 # make sure to use a CUDA image if running on GPUs
 # FROM nvidia/cuda:XX.X-cudnnX-devel-ubuntuXX.XX
-FROM pytorch/pytorch:1.9.0-cuda10.2-cudnn7-runtime
+FROM nvidia/cuda:11.4.2-devel-ubuntu20.04
+# FROM nvcr.io/nvidia/pytorch:21.09-py3
 
 # these two lines are mandatory
 WORKDIR /gridai/project
@@ -10,10 +11,17 @@ COPY ./setup.py .
 COPY ./requirements.txt .
 COPY ./dev-requirements.txt .
 
+env DEBIAN_FRONTEND=noninteractive
+
 # any RUN commands you'd like to run
 # use this to install dependencies
-RUN apt-get update -y && \
-    apt-get install curl wget libsndfile-dev -y
+RUN apt-get update -y
+RUN apt-get install software-properties-common -y
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt-get install python3.9 -y
+RUN apt-get install python3-pip -y
+
+RUN apt-get install curl wget libsndfile-dev -y
 
 RUN pip install lightning-grid wandb
 
