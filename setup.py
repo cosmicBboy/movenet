@@ -1,20 +1,8 @@
 from setuptools import setup
 
 
-EXCLUDE_REQUIRES = {
-    "dask",
-    "joblib",
-    "tensorboard",
-    "tensorflow",
-    "typing-extensions==3.7.4.3",
-}
-
-
 with open("requirements.txt") as f:
-    requires = [
-        x for x in f.readlines() if x.split("==")[0] in EXCLUDE_REQUIRES
-    ]
-
+    requires = list(x for x in f.readlines())
 
 setup(
     name="movenet",
