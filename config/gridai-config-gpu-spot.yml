@@ -17,15 +17,11 @@ compute:
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
-    dependency_file_info:
-      package_manager: pip
-      path: ./requirements.txt
-
     actions:
       on_image_build:
         - apt-get update -y
         - apt-get install wget libsndfile-dev -y
-        - pip install lightning-grid
+        - pip install lightning-grid wandb
 
       on_before_training_start:
         - grid login --username ${GRID_USERNAME} --key ${GRID_API_KEY}
