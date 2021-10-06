@@ -5,7 +5,7 @@ with open("requirements.txt") as f:
     requires = list(x for x in f.readlines())
 
 with open("dev-requirements.txt") as f:
-    requires = list(x for x in f.readlines())
+    dev_requires = list(x for x in f.readlines())
 
 setup(
     name="movenet",
@@ -14,4 +14,5 @@ setup(
     author_email="niels.bantilan@gmail.com",
     packages=["movenet"],
     install_requires=requires,
+    test_require=dev_requires,
 )
