@@ -1,5 +1,12 @@
 """Train the movenet model."""
 
+import subprocess
+# temporary hack until grid actions issue is solved
+subprocess.call(["apt-get", "update", "-y"])
+subprocess.call(["apt-get", "install", "wget", "libsndfile-dev", "-y"])
+subprocess.call(["pip", "install", "lightning-grid"])
+
+
 import logging
 import os
 import shutil
@@ -270,11 +277,6 @@ if __name__ == "__main__":
     parser.add_argument("--grid_user_name", type=str, default="")
     parser.add_argument("--grid_api_key", type=str, default="")
     args = parser.parse_args()
-
-    # temporary hack until grid actions issue is solved
-    subprocess.call(["apt-get", "update", "-y"])
-    subprocess.call(["apt-get", "install", "wget", "libsndfile-dev", "-y"])
-    subprocess.call(["pip", "install", "lightning-grid"])
 
     # initialize wandb
     wandb_setup()
