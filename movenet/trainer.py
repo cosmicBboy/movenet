@@ -1,12 +1,5 @@
 """Train the movenet model."""
 
-import subprocess
-# temporary hack until grid actions issue is solved
-subprocess.call(["apt-get", "update", "-y"])
-subprocess.call(["apt-get", "install", "wget", "libsndfile-dev", "-y"])
-subprocess.call(["pip", "install", "lightning-grid"])
-
-
 import logging
 import os
 import shutil
