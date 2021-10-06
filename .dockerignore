@@ -1,4 +1,3 @@
-datasets
-models
-training_logs
-kinetics-downloader
+datasets/**/*
+models/**/*
+kinetics-downloader/**/*

@@ -3,9 +3,13 @@
 # FROM nvidia/cuda:XX.X-cudnnX-devel-ubuntuXX.XX
 FROM python:3.9.6-slim
 
+ARG WANDB_API_KEY
+
 # these two lines are mandatory
 WORKDIR /gridai/project
-COPY . .
+COPY ./movenet .
+COPY ./setup.py .
+COPY ./requirements.txt .
 
 # any RUN commands you'd like to run
 # use this to install dependencies
@@ -34,8 +38,6 @@ RUN pip install av \
     tensorflow \
     tensorboard \
     tqdm
-
-ARG WANDB_API_KEY
 
 ENV WANDB_ENTITY=nielsbantilan
 ENV WANDB_API_KEY=$WANDB_API_KEY
