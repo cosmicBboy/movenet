@@ -3,7 +3,7 @@ dataclasses==0.6
 dataclasses-json==0.5.2
 joblib
 librosa==0.8.1
-numpy==1.20.3
+numpy==1.19.5
 torch==1.9.0
 torchvision==0.10.0
 torchaudio==0.9.0
@@ -12,3 +12,5 @@ typeguard
 typing-extensions==3.7.4.3
 pytorchvideo==0.1.2
 wandb
+opencv-python-headless==4.5.3.56
+tensorflow==2.6.0
