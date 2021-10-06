@@ -16,8 +16,7 @@ N_EPOCHS?=1
 
 .PHONY: train-debug
 train-debug:
-	envsubst < Dockerfile > /tmp/Dockerfile && \
-	grid run --dockerfile /tmp/Dockerfile \
+	grid run --dockerfile Dockerfile \
 		--instance_type t2.2xlarge \
 		--cpus 7  \
 		--scratch_size 512 \
@@ -26,4 +25,5 @@ train-debug:
 		--datastore_name kinetics-debug \
 		--datastore_version 5 \
 		--datastore_mount_dir /opt/datastore \
-		movenet/trainer.py ${TRAIN_DEBUG_OPTS}
+		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--wandb_api_key=${WANDB_API_KEY}

@@ -34,7 +34,7 @@ logger = logging.getLogger(__file__)
 
 def wandb_setup():
     wandb.login()
-    wandb.init()
+    wandb.init(project="dance2music", entity="nielsbantilan")
 
 
 @dataclass_json
@@ -269,7 +269,10 @@ if __name__ == "__main__":
     # temporary hack until grid environment issue is solved
     parser.add_argument("--grid_user_name", type=str, default="")
     parser.add_argument("--grid_api_key", type=str, default="")
+    parser.add_argument("--wandb_api_key", type=str, default="")
     args = parser.parse_args()
+
+    os.environ["WANDB_API_KEY"] = args.wandb_api_key
 
     # initialize wandb
     wandb_setup()

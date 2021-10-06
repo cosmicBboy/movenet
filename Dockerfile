@@ -20,4 +20,3 @@ RUN pip install lightning-grid wandb
 RUN pip install -e .
 
 ENV WANDB_ENTITY=nielsbantilan
-ENV WANDB_API_KEY=${WANDB_API_KEY}
