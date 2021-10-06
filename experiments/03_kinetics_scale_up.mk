@@ -36,7 +36,7 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p2.xlarge \
+		--instance_type p3.2xlarge \
 		--cpus 3  \
 		--gpus 1 \
 		${INFRA_DEBUG_OPTS} \
