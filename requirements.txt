@@ -18,3 +18,4 @@ typeguard
 typing-extensions==3.7.4.3
 ipdb==0.13.7
 pytorchvideo==0.1.2
+wandb

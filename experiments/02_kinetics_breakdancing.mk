@@ -14,6 +14,17 @@ PRETRAINED_RUN_EXP_NAME?=
 N_EPOCHS?=1
 
 
+.PHONY: train-debug
+train-debug:
+	GRID_DATASTORE_NAME=kinetics-debug \
+	GRID_DATASTORE_VERSION=5 \
+	GRID_DATASTORE_MOUNT_DIR=/opt/datastore \
+	GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=${PRETRAINED_RUN_EXP_NAME} \
+	envsubst < config/gridai-config.yml > /tmp/gridai-config.yml && \
+	grid run --config /tmp/gridai-config.yml --ignore_warnings \
+		movenet/trainer.py ${TRAIN_DEBUG_OPTS}
+
+
 .PHONY: train-breakdancing
 train-breakdancing:
 	GRID_DATASTORE_NAME=kinetics-breakdancing \

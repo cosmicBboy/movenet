@@ -1,6 +1,7 @@
 """Train the movenet model."""
 
 import logging
+import os
 import shutil
 from dataclasses import dataclass, asdict, field
 from dataclasses_json import dataclass_json, config
@@ -12,6 +13,7 @@ import torch.optim
 import torch.nn.functional as F
 import torchaudio
 import torchvision
+import wandb
 from torch.utils.tensorboard import SummaryWriter
 from torchaudio.functional import mu_law_encoding, mu_law_decoding
 from torchtyping import TensorType
@@ -28,6 +30,11 @@ from movenet.wavenet import (
 
 
 logger = logging.getLogger(__file__)
+
+
+def wandb_setup():
+    wandb.login()
+    wandb.init()
 
 
 @dataclass_json
@@ -151,9 +158,14 @@ def train_model(config: TrainingConfig, dataset_fp: str):
                 f"minibatch_loss={loss:0.08f}, "
                 f"minibatch_grad_norm={grad_norm:0.08f}"
             )
-            writer.add_scalar("minibatch/progress/train", progress)
-            writer.add_scalar("minibatch/loss/train", mean_loss, epoch * step)
-            writer.add_scalar("minibatch/grad_norm", grad_norm, epoch * step)
+            total_step = epoch * step
+            writer.add_scalar("minibatch/progress/train", progress, total_step)
+            writer.add_scalar("minibatch/loss/train", mean_loss, total_step)
+            writer.add_scalar("minibatch/grad_norm", grad_norm, total_step)
+
+            wandb.log({"minibatch/progress/train": progress}, step=total_step)
+            wandb.log({"minibatch/loss/train": mean_loss}, step=total_step)
+            wandb.log({"minibatch/grad_norm": grad_norm}, step=total_step)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -178,6 +190,9 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         writer.add_scalar("epochs", epoch, epoch)
         writer.add_scalar("loss/train", train_loss, epoch)
         writer.add_scalar("loss/val", val_loss, epoch)
+
+        wandb.log({"loss/train": train_loss}, step=epoch)
+        wandb.log({"loss/val": val_loss}, step=epoch)
 
         if epoch % config.checkpoint_every == 0:
             logger.info(f"creating checkpoint at epoch {epoch}")
@@ -256,25 +271,29 @@ if __name__ == "__main__":
     parser.add_argument("--grid_api_key", type=str, default="")
     args = parser.parse_args()
 
-    try:
-        logging.info("Downloading artifacts")
-        subprocess.call([
-            "grid",
-            "login",
-            "--username",
-            args.grid_user_name,
-            "--key",
-            args.grid_api_key,
-        ])
-        subprocess.call([
-            "grid",
-            "artifacts",
-            args.pretrained_run_exp_name,
-            "--download_dir",
-            "/artifacts"
-        ])
-    except Exception as e:
-        print(f"download artifacts failed: {e}")
+    # initialize wandb
+    wandb_setup()
+
+    if args.pretrained_model_path:
+        try:
+            logging.info("Downloading artifacts")
+            subprocess.call([
+                "grid",
+                "login",
+                "--username",
+                args.grid_user_name,
+                "--key",
+                args.grid_api_key,
+            ])
+            subprocess.call([
+                "grid",
+                "artifacts",
+                args.pretrained_run_exp_name,
+                "--download_dir",
+                "/artifacts"
+            ])
+        except Exception as e:
+            print(f"download artifacts failed: {e}")
 
     logger.info(f"starting training run")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)

@@ -16,6 +16,10 @@ compute:
     datastore_name: ${GRID_DATASTORE_NAME}
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
+
+    environment:
+      WANDB_ENTITY: nielsbantilan
+      WANDB_API_KEY: ${WANDB_API_KEY}
     
     dependency_file_info:
       package_manager: pip
