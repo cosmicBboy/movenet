@@ -22,7 +22,9 @@ train-debug:
 	GRID_ARTIFACTS_RUNS_OR_EXPERIMENTS=${PRETRAINED_RUN_EXP_NAME} \
 	envsubst < config/gridai-config.yml > /tmp/gridai-config.yml && \
 	grid run --config /tmp/gridai-config.yml --ignore_warnings \
-		movenet/trainer.py ${TRAIN_DEBUG_OPTS}
+		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--grid_user_name "${GRID_USERNAME}" \
+			--grid_api_key "${GRID_API_KEY}"
 
 
 .PHONY: train-breakdancing

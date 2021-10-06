@@ -17,10 +17,6 @@ compute:
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
-    environment:
-      WANDB_ENTITY: nielsbantilan
-      WANDB_API_KEY: ${WANDB_API_KEY}
-
     actions:
       on_image_build:
         - apt-get update -y
