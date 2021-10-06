@@ -34,7 +34,7 @@ train-debug:
 
 
 .PHONY: train-debug-gpu
-train-debug:
+train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
 		--instance_type p2.xlarge \
 		--cpus 3  \
