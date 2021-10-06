@@ -19,7 +19,6 @@ compute:
 
     actions:
       on_image_build:
-        - echo "ON IMAGE BUILD"
         - apt-get update -y
         - apt-get install wget libsndfile-dev -y
         - pip install lightning-grid wandb
