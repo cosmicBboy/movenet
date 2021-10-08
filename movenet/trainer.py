@@ -191,8 +191,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         writer.add_scalar("loss/train", train_loss, epoch)
         writer.add_scalar("loss/val", val_loss, epoch)
 
-        wandb.log({"loss/train": train_loss}, step=epoch)
-        wandb.log({"loss/val": val_loss}, step=epoch)
+        wandb.log({"loss/train": train_loss}, step=total_step)
+        wandb.log({"loss/val": val_loss}, step=total_step)
 
         if epoch % config.checkpoint_every == 0:
             logger.info(f"creating checkpoint at epoch {epoch}")
