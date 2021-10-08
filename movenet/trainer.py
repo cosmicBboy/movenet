@@ -127,12 +127,14 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     # consistent over the epochs
     sample_batch_number = torch.randint(len(valid_dataloader), (1, )).item()
 
+    logger.info("defining model")
     if config.pretrained_model_path:
         model = torch.load(config.pretrained_model_path)
     else:
         model = WaveNet(**asdict(config.model_config))
+    logger.info(f"model: {model}")
 
-    print(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
+    logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
     # if torch.cuda.is_available():
     #     model = model.cuda()
 
@@ -300,6 +302,7 @@ if __name__ == "__main__":
             print(f"download artifacts failed: {e}")
 
     logger.info(f"starting training run")
+    logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
     (args.model_output_path / "checkpoints").mkdir(exist_ok=True, parents=True)
 
     config = TrainingConfig(
