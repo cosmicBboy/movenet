@@ -132,8 +132,9 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     else:
         model = WaveNet(**asdict(config.model_config))
 
-    if torch.cuda.is_available():
-        model = model.cuda()
+    print(f"CUDA AVAILABLE: {torch.is_available}")
+    # if torch.cuda.is_available():
+    #     model = model.cuda()
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
