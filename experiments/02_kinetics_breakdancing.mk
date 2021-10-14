@@ -58,7 +58,8 @@ train:
 			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
 			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
 			--grid_user_name "${GRID_USERNAME}" \
-			--grid_api_key "${GRID_API_KEY}"
+			--grid_api_key "${GRID_API_KEY}" \
+			--wandb_api_key ${WANDB_API_KEY}
 
 
 .PHONY: train-spot

@@ -12,6 +12,10 @@ DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
 	--datastore_mount_dir /opt/datastore \
 
+DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-breakdancing \
+	--datastore_version 2 \
+	--datastore_mount_dir /opt/datastore \
+
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
 	--memory 60G \
 	--framework torch \
@@ -40,6 +44,6 @@ train-debug-gpu:
 		--cpus 3  \
 		--gpus 1 \
 		${INFRA_DEBUG_OPTS} \
-		${DATASET_DEBUG_OPTS} \
+		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--wandb_api_key=${WANDB_API_KEY}

@@ -12,23 +12,10 @@ COPY ./setup.py .
 COPY ./requirements.txt .
 COPY ./dev-requirements.txt .
 
-# env DEBIAN_FRONTEND=noninteractive
-
 # any RUN commands you'd like to run
 # use this to install dependencies
 RUN apt-get update -y
-RUN apt-get install curl wget libsndfile-dev software-properties-common -y
-
-## python
-# RUN apt-get install software-properties-common -y
-# RUN add-apt-repository ppa:deadsnakes/ppa
-# RUN apt-get install python3.9 -y
-# RUN apt-get install python3-pip -y
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
-RUN mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
-RUN add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-RUN apt-get update -y
+RUN apt-get install curl wget libsndfile-dev -y
 
 RUN pip install lightning-grid wandb
 
