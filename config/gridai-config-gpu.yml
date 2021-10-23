@@ -17,6 +17,10 @@ compute:
     datastore_version: ${GRID_DATASTORE_VERSION}
     datastore_mount_dir: ${GRID_DATASTORE_MOUNT_DIR}
 
+    dependency_file_info:
+      package_manager: conda
+      path: ./env.yml
+
     actions:
       on_image_build:
         - apt-get update -y
