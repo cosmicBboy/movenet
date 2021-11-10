@@ -1,5 +1,5 @@
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
-	--n_epochs 10 \
+	--n_epochs 3 \
 	--batch_size 2 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
