@@ -73,8 +73,8 @@ class TrainingConfig:
 
 
 def training_step(model, optimizer, audio, video):
-    # if torch.cuda.is_available():
-    #     audio, video = audio.to("cuda"), video.to("cuda")
+    if torch.cuda.is_available():
+        audio, video = audio.to("cuda"), video.to("cuda")
     output = model(audio, video)
     target = audio[:, :, model.receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target)
@@ -93,8 +93,8 @@ def training_step(model, optimizer, audio, video):
 
 @torch.no_grad()
 def validation_step(model, audio, video):
-    # if torch.cuda.is_available():
-    #     audio, video = audio.to("cuda"), video.to("cuda")
+    if torch.cuda.is_available():
+        audio, video = audio.to("cuda"), video.to("cuda")
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
@@ -135,8 +135,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
     logger.info(f"model: {model}")
 
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
-    # if torch.cuda.is_available():
-    #     model = model.cuda()
+    if torch.cuda.is_available():
+        model = model.cuda()
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
