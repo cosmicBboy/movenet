@@ -371,9 +371,7 @@ if __name__ == "__main__":
     if world_size > 1:
         mp.spawn(
             dist_train_model,
-            args=(
-                world_size, config, args.dataset, args.args.model_output_path
-            ),
+            args=(world_size, config, args.dataset, args.model_output_path),
             nprocs=world_size,
             join=True
         )
