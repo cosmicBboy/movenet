@@ -6,14 +6,16 @@ import shutil
 from dataclasses import dataclass, asdict, field
 from dataclasses_json import dataclass_json, config
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import torch
-import torch.optim
+import torch.multiprocessing as mp
+import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim
 import torchaudio
-import torchvision
 import wandb
+from torch import distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 from torchaudio.functional import mu_law_encoding, mu_law_decoding
 from torchtyping import TensorType
@@ -57,6 +59,7 @@ class TrainingConfig:
     weight_decay: float = 0.0
     n_epochs: int = 100
     n_steps_per_epoch: Optional[int] = None
+    dist_backend: str = None
     pretrained_model_path: Optional[Path] = field(
         default=None,
         metadata=config(
@@ -104,12 +107,19 @@ def validation_step(model, audio, video):
     return loss, output
 
 
-def train_model(config: TrainingConfig, dataset_fp: str):
+def train_model(
+    config: TrainingConfig,
+    dataset_fp: str,
+    rank: int = 0,
+    world_size: int = 0,
+) -> nn.Module:
 
     dataloader = dataset.get_dataloader(
         dataset_fp,
         input_channels=config.model_config.input_channels,
         batch_size=config.batch_size,
+        rank=rank,
+        world_size=world_size,
         shuffle=True,
         num_workers=0,
     )
@@ -119,6 +129,8 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         input_channels=config.model_config.input_channels,
         batch_size=config.batch_size,
         train=False,
+        rank=rank,
+        world_size=world_size,
         shuffle=False,
         num_workers=0,
     )
@@ -136,7 +148,9 @@ def train_model(config: TrainingConfig, dataset_fp: str):
 
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
     if torch.cuda.is_available():
-        model = model.cuda()
+        model = model.cuda(rank)
+        if world_size > 1:
+            model = nn.parallel.DistributedDataParallel(model)
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
@@ -153,22 +167,23 @@ def train_model(config: TrainingConfig, dataset_fp: str):
             loss, grad_norm = training_step(model, optimizer, audio, video)
             train_loss += loss
 
-            progress = step / len(dataloader)
+            prog = step / len(dataloader)
             mean_loss = loss / config.batch_size
             logger.info(
                 f"[epoch {epoch} | step {step}] "
-                f"batch_progress={progress}, "
+                f"batch_progress={prog}, "
                 f"minibatch_loss={loss:0.08f}, "
                 f"minibatch_grad_norm={grad_norm:0.08f}"
             )
-            total_step = epoch * step
-            writer.add_scalar("minibatch/progress/train", progress, total_step)
-            writer.add_scalar("minibatch/loss/train", mean_loss, total_step)
-            writer.add_scalar("minibatch/grad_norm", grad_norm, total_step)
+            total = epoch * step
+            if rank == 0:
+                writer.add_scalar("minibatch/progress/train", prog, total)
+                writer.add_scalar("minibatch/loss/train", mean_loss, total)
+                writer.add_scalar("minibatch/grad_norm", grad_norm, total)
 
-            wandb.log({"minibatch/progress/train": progress}, step=total_step)
-            wandb.log({"minibatch/loss/train": mean_loss}, step=total_step)
-            wandb.log({"minibatch/grad_norm": grad_norm}, step=total_step)
+                wandb.log({"minibatch/progress/train": prog}, step=total)
+                wandb.log({"minibatch/loss/train": mean_loss}, step=total)
+                wandb.log({"minibatch/grad_norm": grad_norm}, step=total)
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -177,27 +192,28 @@ def train_model(config: TrainingConfig, dataset_fp: str):
         sample_output = None
         sample_fps = None
         for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
-            loss, output = validation_step(model, audio, video)
-            val_loss += loss
+            _val_loss, output = validation_step(model, audio, video)
+            val_loss += _val_loss
             if step == sample_batch_number:
                 sample_output = output
                 sample_fps = fps
 
-        train_loss /= len(dataloader.dataset)
-        val_loss /= len(valid_dataloader.dataset)
-        logger.info(
-            f"[epoch {epoch}] "
-            f"train_loss={train_loss:0.08f}, "
-            f"val_loss={loss:0.08f}"
-        )
-        writer.add_scalar("epochs", epoch, epoch)
-        writer.add_scalar("loss/train", train_loss, epoch)
-        writer.add_scalar("loss/val", val_loss, epoch)
+        if rank == 0:
+            train_loss /= len(dataloader.dataset)
+            val_loss /= len(valid_dataloader.dataset)
+            logger.info(
+                f"[epoch {epoch}] "
+                f"train_loss={train_loss:0.08f}, "
+                f"val_loss={loss:0.08f}"
+            )
+            writer.add_scalar("epochs", epoch, epoch)
+            writer.add_scalar("loss/train", train_loss, epoch)
+            writer.add_scalar("loss/val", val_loss, epoch)
 
-        wandb.log({"loss/train": train_loss}, step=total_step)
-        wandb.log({"loss/val": val_loss}, step=total_step)
+            wandb.log({"loss/train": train_loss}, step=total)
+            wandb.log({"loss/val": val_loss}, step=total)
 
-        if epoch % config.checkpoint_every == 0:
+        if epoch % config.checkpoint_every == 0 and rank == 0:
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
@@ -223,6 +239,29 @@ def train_model(config: TrainingConfig, dataset_fp: str):
                 )
 
     return model
+
+
+
+def dist_train_model(
+    rank: int,
+    world_size: int,
+    config: TrainingConfig,
+    dataset_fp: str,
+    model_output_path: Path,
+):
+
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "8888"
+    dist.init_process_group(
+        config.dist_backend, rank=rank, world_size=world_size
+    )
+
+    model = train_model(config, dataset_fp, rank=rank, distributed=True)
+    if rank == 0:
+        wandb.finish()
+        torch.save(model, model_output_path / "model.pth")
+
+    dist.destroy_process_group()
 
 
 if __name__ == "__main__":
@@ -251,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument("--residual_channels", type=int, default=16)
     parser.add_argument("--layer_size", type=int, default=3)
     parser.add_argument("--stack_size", type=int, default=3)
+    parser.add_argument("--dist_backend", type=str, default="nccl")
     parser.add_argument(
         "--pretrained_model_path",
         type=lambda x: None if x is None or x == "" else Path(x),
@@ -317,6 +357,7 @@ if __name__ == "__main__":
         learning_rate=args.learning_rate,
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
+        dist_backend=args.dist_backend,
         pretrained_model_path=args.pretrained_model_path,
         model_output_path=args.model_output_path,
         tensorboard_dir=args.training_logs_path,
@@ -325,5 +366,17 @@ if __name__ == "__main__":
         f.write(config.to_json())
 
     logger.info(f"config: {config}")
-    model = train_model(config, args.dataset)
-    torch.save(model, args.model_output_path / "model.pth")
+
+    world_size = torch.cuda.device_count()
+    if world_size > 1:
+        mp.spawn(
+            dist_train_model,
+            args=(
+                world_size, config, args.dataset, args.args.model_output_path
+            ),
+            nprocs=world_size,
+            join=True
+        )
+    else:
+        model = train_model(config, args.dataset)
+        torch.save(model, args.model_output_path / "model.pth")

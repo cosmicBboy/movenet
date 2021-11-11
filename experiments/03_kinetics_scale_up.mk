@@ -41,19 +41,19 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.2xlarge \
-		--cpus 3  \
-		--gpus 1 \
+		--instance_type p3.8xlarge \
+		--cpus 31  \
+		--gpus 4 \
 		${INFRA_OINFRA_DEBUG_OPTSPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--wandb_api_key=${WANDB_API_KEY}
 
 
-N_DEBUG_EPOCHS?=10
+N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
-	--n_epochs ${N_DEBUG_EPOCHS} \
+	--n_epochs ${N_EPOCHS} \
 	--batch_size 2 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \

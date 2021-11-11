@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 try:
     from typing import TypedDict
@@ -103,12 +103,28 @@ class KineticsDataset(torch.utils.data.Dataset):
 
 
 def get_dataloader(
-    filepath, input_channels: int, batch_size: int = 64, train=True, **kwargs
+    filepath,
+    input_channels: int,
+    batch_size: int = 64,
+    train: bool = True,
+    rank: int = 0,
+    world_size: int = 0,
+    **kwargs,
 ):
+    dataset = KineticsDataset(filepath, train=train)
+    sampler = None
+    if world_size > 1:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset,
+            rank=rank,
+            num_replicas=1 if not world_size else world_size,
+            shuffle=True
+        )
     return torch.utils.data.DataLoader(
         KineticsDataset(filepath, train=train),
         batch_size=batch_size,
         collate_fn=partial(make_batch, input_channels),
+        sampler=sampler,
         **kwargs
     )
 
