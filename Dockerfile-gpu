@@ -17,8 +17,7 @@ COPY ./dev-requirements.txt .
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y
 RUN apt-get upgrade -y
-RUN apt-get install curl wget libsndfile-dev -y
-RUN apt-get install -y python3-pip
+RUN apt-get install curl wget git libsndfile-dev python3-pip -y
 
 RUN pip3 install lightning-grid wandb
 RUN pip3 install -e .
