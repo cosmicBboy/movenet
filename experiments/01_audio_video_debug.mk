@@ -1,3 +1,8 @@
+# NOTE: This Makefile currently does not work, since gridai infra is experiencing
+# bugs with the yaml config file:
+# - environment variables aren't working: https://docs.grid.ai/products/run-run-and-sweep-github-files/yaml-configs#using-environment-variables
+# - the actions acen't working: https://docs.grid.ai/products/run-run-and-sweep-github-files/actions
+
 GRID_OPTS?=GRID_DATASTORE_NAME=kinetics-debug \
 	GRID_DATASTORE_VERSION=5 \
 	GRID_DATASTORE_MOUNT_DIR=/opt/datastore

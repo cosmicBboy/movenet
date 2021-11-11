@@ -1,3 +1,8 @@
+# NOTE: This Makefile currently does not work, since gridai infra is experiencing
+# bugs with the yaml config file:
+# - environment variables aren't working: https://docs.grid.ai/products/run-run-and-sweep-github-files/yaml-configs#using-environment-variables
+# - the actions acen't working: https://docs.grid.ai/products/run-run-and-sweep-github-files/actions
+
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs 10 \
 	--batch_size 2 \

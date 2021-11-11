@@ -1,5 +1,7 @@
+N_DEBUG_EPOCHS?=1
+
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
-	--n_epochs 3 \
+	--n_epochs ${N_DEBUG_EPOCHS} \
 	--batch_size 2 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
@@ -23,7 +25,6 @@ INFRA_DEBUG_OPTS?=--scratch_size 512 \
 
 PRETRAINED_MODEL_PATH?=
 PRETRAINED_RUN_EXP_NAME?=
-N_EPOCHS?=1
 
 
 .PHONY: train-debug
@@ -43,7 +44,43 @@ train-debug-gpu:
 		--instance_type p3.2xlarge \
 		--cpus 3  \
 		--gpus 1 \
-		${INFRA_DEBUG_OPTS} \
+		${INFRA_OINFRA_DEBUG_OPTSPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--wandb_api_key=${WANDB_API_KEY}
+
+
+N_DEBUG_EPOCHS?=10
+
+TRAIN_OPTS?=--dataset /opt/datastore \
+	--n_epochs ${N_DEBUG_EPOCHS} \
+	--batch_size 2 \
+	--learning_rate 0.0003 \
+	--input_channels 64 \
+	--residual_channels 64 \
+	--layer_size 3 \
+	--stack_size 3 \
+	--checkpoint_every 1
+
+INFRA_OPTS?=--scratch_size 512 \
+	--memory 60G \
+	--framework torch \
+
+DATASET_OPTS?=--datastore_name kinetics-all \
+	--datastore_version 1 \
+	--datastore_mount_dir /opt/datastore \
+
+.PHONY: train-gpu
+train-gpu:
+	grid run --dockerfile Dockerfile-gpu \
+		--instance_type p3.2xlarge \
+		--cpus 3  \
+		--gpus 1 \
+		${INFRA_OPTS} \
+		${DATASET_OPTS} \
+		movenet/trainer.py ${TRAIN_OPTS} \
+			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
+			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
+			--grid_user_name="${GRID_USERNAME}" \
+			--grid_api_key="${GRID_API_KEY}" \
 			--wandb_api_key=${WANDB_API_KEY}

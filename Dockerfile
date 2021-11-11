@@ -13,7 +13,7 @@ COPY ./dev-requirements.txt .
 # any RUN commands you'd like to run
 # use this to install dependencies
 RUN apt-get update -y && \
-    apt-get install curl wget libsndfile-dev -y
+    apt-get install curl git wget libsndfile-dev -y
 
 RUN pip install lightning-grid wandb
 
