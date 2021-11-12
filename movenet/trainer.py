@@ -256,7 +256,7 @@ def dist_train_model(
         config.dist_backend, rank=rank, world_size=world_size
     )
 
-    model = train_model(config, dataset_fp, rank=rank, distributed=True)
+    model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
         wandb.finish()
         torch.save(model, model_output_path / "model.pth")
