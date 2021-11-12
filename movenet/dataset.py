@@ -120,6 +120,7 @@ def get_dataloader(
             num_replicas=1 if not world_size else world_size,
             shuffle=True
         )
+        kwargs.pop("shuffle")
     return torch.utils.data.DataLoader(
         KineticsDataset(filepath, train=train),
         batch_size=batch_size,
