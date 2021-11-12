@@ -76,8 +76,6 @@ class TrainingConfig:
 
 
 def training_step(model, optimizer, audio, video):
-    if torch.cuda.is_available():
-        audio, video = audio.to("cuda"), video.to("cuda")
     output = model(audio, video)
     target = audio[:, :, model.receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target)
@@ -96,8 +94,6 @@ def training_step(model, optimizer, audio, video):
 
 @torch.no_grad()
 def validation_step(model, audio, video):
-    if torch.cuda.is_available():
-        audio, video = audio.to("cuda"), video.to("cuda")
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
@@ -150,7 +146,9 @@ def train_model(
     if torch.cuda.is_available():
         model = model.cuda(rank)
         if world_size > 1:
-            model = nn.parallel.DistributedDataParallel(model)
+            model = nn.parallel.DistributedDataParallel(
+                model, device_ids=[rank]
+            )
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
@@ -164,6 +162,8 @@ def train_model(
         model.train()
         train_loss = 0.0
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
+            if torch.cuda.is_available():
+                audio, video = audio.to(rank), video.to(rank)
             loss, grad_norm = training_step(model, optimizer, audio, video)
             train_loss += loss
 
@@ -192,6 +192,8 @@ def train_model(
         sample_output = None
         sample_fps = None
         for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
+            if torch.cuda.is_available():
+                audio, video = audio.to(rank), video.to(rank)
             _val_loss, output = validation_step(model, audio, video)
             val_loss += _val_loss
             if step == sample_batch_number:
