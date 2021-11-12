@@ -148,7 +148,7 @@ def train_model(
     if torch.cuda.is_available():
         if world_size > 1:
             model = nn.parallel.DistributedDataParallel(
-                model, device_ids=[rank]
+                model.cuda(rank), device_ids=[rank]
             )
         else:
             model = model.cuda(rank)
