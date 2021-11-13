@@ -1,4 +1,4 @@
-N_DEBUG_EPOCHS?=1
+N_DEBUG_EPOCHS?=3
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
@@ -14,7 +14,7 @@ DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
 	--datastore_mount_dir /opt/datastore \
 
-DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-breakdancing \
+DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-all \
 	--datastore_version 2 \
 	--datastore_mount_dir /opt/datastore \
 
@@ -48,6 +48,7 @@ train-debug-gpu:
 		${INFRA_OINFRA_DEBUG_OPTSPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--n_steps_per_epoch 10 \
 			--wandb_api_key=${WANDB_API_KEY}
 
 
