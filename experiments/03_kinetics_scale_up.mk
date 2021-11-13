@@ -41,9 +41,10 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type g3.8xlarge \
-		--cpus 31  \
-		--gpus 2 \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
+		--use_spot \
 		${INFRA_OINFRA_DEBUG_OPTSPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
@@ -73,9 +74,9 @@ DATASET_OPTS?=--datastore_name kinetics-all \
 .PHONY: train-gpu
 train-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type g3.8xlarge \
-		--cpus 31  \
-		--gpus 2 \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \
 		movenet/trainer.py ${TRAIN_OPTS} \
