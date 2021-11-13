@@ -1,5 +1,6 @@
 """Train the movenet model."""
 
+import json
 import logging
 import os
 import shutil
@@ -264,7 +265,9 @@ def dist_train_model(
     dist.init_process_group(
         config.dist_backend, rank=rank, world_size=world_size
     )
-    wandb_setup()
+    if rank == 0:
+        wandb_setup()
+        wandb.config.update(json.loads(config.to_json()))
 
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
