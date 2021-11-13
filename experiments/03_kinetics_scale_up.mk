@@ -15,7 +15,7 @@ DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_mount_dir /opt/datastore \
 
 DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-all \
-	--datastore_version 2 \
+	--datastore_version 1 \
 	--datastore_mount_dir /opt/datastore \
 
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
