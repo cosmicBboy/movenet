@@ -44,7 +44,6 @@ train-debug-gpu:
 		--instance_type p3.8xlarge \
 		--cpus 30  \
 		--gpus 4 \
-		--use_spot \
 		${INFRA_OINFRA_DEBUG_OPTSPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \

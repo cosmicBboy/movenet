@@ -162,7 +162,9 @@ def train_model(
         weight_decay=config.weight_decay,
     )
     # training loop
-    writer = SummaryWriter(config.tensorboard_dir)
+    if rank == 0:
+        writer = SummaryWriter(config.tensorboard_dir)
+
     for epoch in range(1, config.n_epochs + 1):
 
         model.train()
