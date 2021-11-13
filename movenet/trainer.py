@@ -264,6 +264,7 @@ def dist_train_model(
     dist.init_process_group(
         config.dist_backend, rank=rank, world_size=world_size
     )
+    wandb_setup()
 
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
@@ -326,9 +327,6 @@ if __name__ == "__main__":
 
     os.environ["WANDB_API_KEY"] = args.wandb_api_key
 
-    # initialize wandb
-    wandb_setup()
-
     if args.pretrained_model_path:
         try:
             logging.info("Downloading artifacts")
@@ -385,5 +383,7 @@ if __name__ == "__main__":
             join=True
         )
     else:
+        # initialize wandb
+        wandb_setup()
         model = train_model(config, args.dataset)
         torch.save(model, args.model_output_path / "model.pth")
