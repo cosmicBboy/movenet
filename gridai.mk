@@ -20,8 +20,8 @@ datasets/kinetics_debug:
 datasets/kinetics_breakdancing:
 	@mkdir -p datasets/kinetics_breakdancing/train/breakdancing
 	mkdir -p datasets/kinetics_breakdancing/valid/breakdancing
-	cp -R datasets/kinetics/train/breakdancing datasets/kinetics_breakdancing/train/breakdancing
-	cp -R datasets/kinetics/valid/breakdancing datasets/kinetics_breakdancing/valid/breakdancing
+	cp -R datasets/kinetics/train/breakdancing datasets/kinetics_breakdancing/train
+	cp -R datasets/kinetics/valid/breakdancing datasets/kinetics_breakdancing/valid
 
 kinetics-breakdancing.tar.gz:
 	tar -C datasets/kinetics -cvzf kinetics-breakdancing.tar.gz \
