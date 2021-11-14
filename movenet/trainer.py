@@ -13,6 +13,7 @@ import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.parallel.distributed import DistributedDataParallel
 import torch.optim
 import torchaudio
 import wandb
@@ -77,6 +78,7 @@ class TrainingConfig:
 
 
 def training_step(model, optimizer, audio, video, receptive_fields):
+    logger.info(f"training step")
     output = model(audio, video)
     target = audio[:, :, receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target)
@@ -98,6 +100,7 @@ def validation_step(model, audio, video, receptive_fields):
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
+    logger.info(f"validation step")
     output = model(audio, video)
     target = audio[:, :, receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target).item()
@@ -169,6 +172,7 @@ def train_model(
 
         model.train()
         train_loss = 0.0
+        logger.info(f"starting training loop for epoch {epoch}")
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
             if torch.cuda.is_available():
                 audio, video = audio.to(rank), video.to(rank)
@@ -201,6 +205,10 @@ def train_model(
         val_loss = 0.0
         sample_output = None
         sample_fps = None
+        # TODO: check if script is halting here, why can't validation be
+        # distributed?
+        # - add more logging to be able to see errors.
+        logger.info(f"starting validation loop for epoch {epoch}")
         for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
             if torch.cuda.is_available():
                 audio, video = audio.to(rank), video.to(rank)
@@ -208,11 +216,12 @@ def train_model(
                 model, audio, video, receptive_fields
             )
             val_loss += _val_loss
-            if step == sample_batch_number:
+            if rank == 0 and step == sample_batch_number:
                 sample_output = output
                 sample_fps = fps
 
         if rank == 0:
+            logger.info(f"computing training and validation loss")
             train_loss /= len(dataloader.dataset)
             val_loss /= len(valid_dataloader.dataset)
             logger.info(
@@ -234,7 +243,11 @@ def train_model(
             output_samples = mu_law_decoding(
                 sample_output.argmax(1), config.model_config.input_channels
             ).to("cpu")
-            torch.save(model, fp / "model.pth")
+            module = (
+                model.module if isinstance(model, DistributedDataParallel)
+                else model
+            )
+            torch.save(module, fp / "model.pth")
             torch.save(output_samples, fp / "output_samples.pth")
             for i, (sample_fp, sample) in enumerate(
                 zip(sample_fps, output_samples)
@@ -276,7 +289,7 @@ def dist_train_model(
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
         wandb.finish()
-        torch.save(model, model_output_path / "model.pth")
+        torch.save(model.module, model_output_path / "model.pth")
 
     dist.destroy_process_group()
 
