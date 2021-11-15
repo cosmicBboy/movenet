@@ -36,6 +36,13 @@ from movenet.wavenet import (
 logger = logging.getLogger(__file__)
 
 
+def configure_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)s] %(asctime)s:: %(message)s",
+    )
+
+
 def wandb_setup():
     wandb.login()
     wandb.init(project="dance2music", entity="nielsbantilan")
@@ -168,7 +175,7 @@ def train_model(
     if rank == 0:
         writer = SummaryWriter(config.tensorboard_dir)
 
-    for epoch in range(1, config.n_epochs + 1):
+    for epoch in range(config.n_epochs):
 
         model.train()
         train_loss = 0.0
@@ -189,7 +196,7 @@ def train_model(
                 f"minibatch_loss={loss:0.08f}, "
                 f"minibatch_grad_norm={grad_norm:0.08f}"
             )
-            total = epoch * step
+            total = epoch * len(dataloader) + step
             if rank == 0:
                 writer.add_scalar("minibatch/progress/train", prog, total)
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)
@@ -205,9 +212,6 @@ def train_model(
         val_loss = 0.0
         sample_output = None
         sample_fps = None
-        # TODO: check if script is halting here, why can't validation be
-        # distributed?
-        # - add more logging to be able to see errors.
         logger.info(f"starting validation loop for epoch {epoch}")
         for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
             if torch.cuda.is_available():
@@ -216,6 +220,15 @@ def train_model(
                 model, audio, video, receptive_fields
             )
             val_loss += _val_loss
+            mean_val_loss = val_loss / config.batch_size
+            prog = step / len(valid_dataloader)
+            total = epoch * len(valid_dataloader) + step
+            if rank == 0:
+                writer.add_scalar("minibatch/progress/val", prog, total)
+                writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
+
+                wandb.log({"minibatch/progress/val": prog}, step=total)
+                wandb.log({"minibatch/loss/val": mean_val_loss}, step=total)
             if rank == 0 and step == sample_batch_number:
                 sample_output = output
                 sample_fps = fps
@@ -237,6 +250,7 @@ def train_model(
             wandb.log({"loss/val": val_loss}, step=total)
 
         if epoch % config.checkpoint_every == 0 and rank == 0:
+            # TODO: distributed training halts here perhaps?
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
@@ -265,6 +279,8 @@ def train_model(
                     sample_rate=sample.shape[0],
                 )
 
+        dist.barrier()
+
     return model
 
 
@@ -276,6 +292,7 @@ def dist_train_model(
     dataset_fp: str,
     model_output_path: Path,
 ):
+    configure_logging()
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "8888"
@@ -302,10 +319,7 @@ if __name__ == "__main__":
     from datetime import datetime
 
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(levelname)s] %(asctime)s:: %(message)s",
-    )
+    configure_logging()
 
     MAX_RETRIES = 10
 
