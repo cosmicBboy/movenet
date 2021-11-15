@@ -85,7 +85,6 @@ class TrainingConfig:
 
 
 def training_step(model, optimizer, audio, video, receptive_fields):
-    logger.info(f"training step")
     output = model(audio, video)
     target = audio[:, :, receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target)
@@ -107,7 +106,6 @@ def validation_step(model, audio, video, receptive_fields):
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
-    logger.info(f"validation step")
     output = model(audio, video)
     target = audio[:, :, receptive_fields:].argmax(1)
     loss = F.cross_entropy(output, target).item()
@@ -190,14 +188,14 @@ def train_model(
 
             prog = step / len(dataloader)
             mean_loss = loss / config.batch_size
-            logger.info(
-                f"[epoch {epoch} | step {step}] "
-                f"batch_progress={prog}, "
-                f"minibatch_loss={loss:0.08f}, "
-                f"minibatch_grad_norm={grad_norm:0.08f}"
-            )
             total = epoch * len(dataloader) + step
             if rank == 0:
+                logger.info(
+                    f"[epoch {epoch} | step {step}] "
+                    f"batch_progress={prog}, "
+                    f"minibatch_loss={loss:0.08f}, "
+                    f"minibatch_grad_norm={grad_norm:0.08f}"
+                )
                 writer.add_scalar("minibatch/progress/train", prog, total)
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
@@ -231,21 +229,19 @@ def train_model(
             val_loss += _val_loss
             mean_val_loss = val_loss / config.batch_size
             prog = step / len(valid_dataloader)
-            val_total = epoch * len(valid_dataloader) + step
+            total = epoch * len(valid_dataloader) + step
             if rank == 0:
-                writer.add_scalar("minibatch/progress/val", prog, val_total)
-                writer.add_scalar(
-                    "minibatch/loss/val", mean_val_loss, val_total
+                logger.info(
+                    f"[epoch {epoch} | step {step}] "
+                    f"batch_progress={prog}, "
+                    f"minibatch_loss={val_loss:0.08f}"
                 )
+                writer.add_scalar("minibatch/progress/val", prog, total)
+                writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
 
+                wandb.log({"minibatch/progress/val": prog, "val_step": total})
                 wandb.log(
-                    {"minibatch/progress/val": prog, "val_step": val_total}
-                )
-                wandb.log(
-                    {
-                        "minibatch/loss/val": mean_val_loss,
-                        "val_step": val_total,
-                    }
+                    {"minibatch/loss/val": mean_val_loss, "val_step": total}
                 )
             # if rank == 0 and step == sample_batch_number:
             #     sample_output = output.to(rank)
@@ -264,17 +260,17 @@ def train_model(
             writer.add_scalar("loss/train", train_loss, epoch)
             writer.add_scalar("loss/val", val_loss, epoch)
 
-            wandb.log({"loss/train": train_loss}, step=total)
-            wandb.log({"loss/val": val_loss}, step=total)
+            wandb.log({"loss/train": train_loss, "epoch": epoch})
+            wandb.log({"loss/val": val_loss, "epoch": epoch})
 
+        fp = args.model_output_path / "checkpoints" / str(epoch)
+        checkpoint_path = fp / "model.pth"
         if epoch % config.checkpoint_every == 0 and rank == 0:
             # TODO: find out where training halts
             logger.info(f"creating checkpoint at epoch {epoch}")
-            fp = args.model_output_path / "checkpoints" / str(epoch)
-            fp.mkdir(parents=True)
 
-            checkpoint_path = fp / "model.pth"
             logger.info(f"checkpoint path: {fp}")
+            fp.mkdir(parents=True)
             torch.save(model.state_dict(), checkpoint_path)
 
             # logger.info("decoding output samples")
