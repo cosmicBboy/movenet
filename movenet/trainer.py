@@ -295,6 +295,7 @@ def train_model(
             #         sample_rate=sample.shape[0],
             #     )
 
+        dist.barrier()
         # wait for rank 0 to finish writing checkpoint
         logger.info(f"ending training loop for epoch {epoch}")
         if isinstance(model, nn.parallel.DistributedDataParallel):
@@ -305,7 +306,6 @@ def train_model(
                     map_location={"cuda:0": f"cuda:{rank}"}
                 )
             )
-        dist.barrier()
 
     return model
 
