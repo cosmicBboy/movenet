@@ -222,13 +222,17 @@ def train_model(
             val_loss += _val_loss
             mean_val_loss = val_loss / config.batch_size
             prog = step / len(valid_dataloader)
-            total = epoch * len(valid_dataloader) + step
+            val_total = epoch * len(valid_dataloader) + step
             if rank == 0:
-                writer.add_scalar("minibatch/progress/val", prog, total)
-                writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
+                writer.add_scalar("minibatch/progress/val", prog, val_total)
+                writer.add_scalar(
+                    "minibatch/loss/val", mean_val_loss, val_total
+                )
 
-                wandb.log({"minibatch/progress/val": prog}, step=total)
-                wandb.log({"minibatch/loss/val": mean_val_loss}, step=total)
+                wandb.log({"minibatch/progress/val": prog}, step=val_total)
+                wandb.log(
+                    {"minibatch/loss/val": mean_val_loss}, step=val_total
+                )
             if rank == 0 and step == sample_batch_number:
                 sample_output = output
                 sample_fps = fps
@@ -250,18 +254,24 @@ def train_model(
             wandb.log({"loss/val": val_loss}, step=total)
 
         if epoch % config.checkpoint_every == 0 and rank == 0:
-            # TODO: distributed training halts here perhaps?
+            # TODO: find out where training halts
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
+
+            logger.info("decoding output samples")
             output_samples = mu_law_decoding(
                 sample_output.argmax(1), config.model_config.input_channels
             ).to("cpu")
+
             module = (
                 model.module if isinstance(model, DistributedDataParallel)
                 else model
             )
+            logger.info(f"saving model {module}")
             torch.save(module, fp / "model.pth")
+
+            logger.info("output samples")
             torch.save(output_samples, fp / "output_samples.pth")
             for i, (sample_fp, sample) in enumerate(
                 zip(sample_fps, output_samples)
