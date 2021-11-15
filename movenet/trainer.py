@@ -263,7 +263,7 @@ def train_model(
             wandb.log({"loss/train": train_loss, "epoch": epoch})
             wandb.log({"loss/val": val_loss, "epoch": epoch})
 
-        fp = args.model_output_path / "checkpoints" / str(epoch)
+        fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
         if epoch % config.checkpoint_every == 0 and rank == 0:
             # TODO: find out where training halts
