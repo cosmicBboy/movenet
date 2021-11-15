@@ -202,9 +202,9 @@ def train_model(
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
 
-                wandb.log({"minibatch/progress/train": prog}, step=total)
-                wandb.log({"minibatch/loss/train": mean_loss}, step=total)
-                wandb.log({"minibatch/grad_norm": grad_norm}, step=total)
+                wandb.log({"minibatch/progress/train": prog, "train_step": total})
+                wandb.log({"minibatch/loss/train": "train_step": total})
+                wandb.log({"minibatch/grad_norm": "train_step": total})
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -232,13 +232,18 @@ def train_model(
                     "minibatch/loss/val", mean_val_loss, val_total
                 )
 
-                wandb.log({"minibatch/progress/val": prog}, step=val_total)
                 wandb.log(
-                    {"minibatch/loss/val": mean_val_loss}, step=val_total
+                    {"minibatch/progress/val": prog, "val_step": val_total}
                 )
-            if rank == 0 and step == sample_batch_number:
-                sample_output = output.to(rank)
-                sample_fps = fps
+                wandb.log(
+                    {
+                        "minibatch/loss/val": mean_val_loss,
+                        "val_step": val_total,
+                    }
+                )
+            # if rank == 0 and step == sample_batch_number:
+            #     sample_output = output.to(rank)
+            #     sample_fps = fps
 
         if rank == 0:
             logger.info(f"computing training and validation loss")
@@ -261,15 +266,10 @@ def train_model(
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
-            logger.info(f"checkpoint path: {fp}")
 
-            module = (
-                model.module.to("cpu")
-                if isinstance(model, DistributedDataParallel)
-                else model
-            )
-            logger.info(f"saving model {module}")
-            torch.save(module, fp / "model.pth")
+            checkpoint_path = fp / "model.pth"
+            logger.info(f"checkpoint path: {fp}")
+            torch.save(model.state_dict(), checkpoint_path)
 
             # logger.info("decoding output samples")
             # output_samples = mu_law_decoding(
@@ -294,6 +294,15 @@ def train_model(
             #     )
 
         # wait for rank 0 to finish writing checkpoint
+        logger.info(f"ending training loop for epoch {epoch}")
+        if isinstance(model, nn.parallel.DistributedDataParallel):
+            logger.info("loading distributed model from checkpoints")
+            model.load_state_dict(
+                torch.load(
+                    checkpoint_path,
+                    map_location={"cuda:0": f"cuda:{rank}"}
+                )
+            )
         dist.barrier()
 
     return model
