@@ -202,9 +202,15 @@ def train_model(
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
 
-                wandb.log({"minibatch/progress/train": prog, "train_step": total})
-                wandb.log({"minibatch/loss/train": "train_step": total})
-                wandb.log({"minibatch/grad_norm": "train_step": total})
+                wandb.log(
+                    {"minibatch/progress/train": prog, "train_step": total}
+                )
+                wandb.log(
+                    {"minibatch/loss/train": mean_loss, "train_step": total}
+                )
+                wandb.log(
+                    {"minibatch/grad_norm": grad_norm, "train_step": total}
+                )
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
