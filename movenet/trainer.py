@@ -332,7 +332,7 @@ def dist_train_model(
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
         wandb.finish()
-        torch.save(model.module, model_output_path / "model.pth")
+        torch.save(model.state_dict(), model_output_path / "model.pth")
 
     dist.destroy_process_group()
 
