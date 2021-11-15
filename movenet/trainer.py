@@ -213,12 +213,15 @@ def train_model(
         sample_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
-        for step, (audio, video, contexts, fps) in enumerate(valid_dataloader):
+        for step, (audio, video, _, fps) in enumerate(valid_dataloader, 1):
             if torch.cuda.is_available():
                 audio, video = audio.to(rank), video.to(rank)
             _val_loss, output = validation_step(
                 model, audio, video, receptive_fields
             )
+            # wait for all processes to complete the validation step
+            dist.barrier()
+
             val_loss += _val_loss
             mean_val_loss = val_loss / config.batch_size
             prog = step / len(valid_dataloader)
@@ -288,8 +291,6 @@ def train_model(
                     torch.stack([sample, sample]),
                     sample_rate=sample.shape[0],
                 )
-
-        dist.barrier()
 
     return model
 
