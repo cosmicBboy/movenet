@@ -261,6 +261,7 @@ def train_model(
             logger.info(f"creating checkpoint at epoch {epoch}")
             fp = args.model_output_path / "checkpoints" / str(epoch)
             fp.mkdir(parents=True)
+            logger.info(f"checkpoint path: {fp}")
 
             logger.info("decoding output samples")
             output_samples = mu_law_decoding(
@@ -268,7 +269,8 @@ def train_model(
             ).to("cpu")
 
             module = (
-                model.module if isinstance(model, DistributedDataParallel)
+                model.module.to("cpu")
+                if isinstance(model, DistributedDataParallel)
                 else model
             )
             logger.info(f"saving model {module}")
@@ -291,6 +293,9 @@ def train_model(
                     torch.stack([sample, sample]),
                     sample_rate=sample.shape[0],
                 )
+
+        # wait for rank 0 to finish writing checkpoint
+        dist.barrier()
 
     return model
 
