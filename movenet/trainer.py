@@ -243,9 +243,9 @@ def train_model(
                 wandb.log(
                     {"minibatch/loss/val": mean_val_loss, "val_step": total}
                 )
-            # if rank == 0 and step == sample_batch_number:
-            #     sample_output = output.to(rank)
-            #     sample_fps = fps
+            if rank == 0 and step == sample_batch_number:
+                sample_output = output.to(rank)
+                sample_fps = fps
 
         if rank == 0:
             logger.info(f"computing training and validation loss")
@@ -273,27 +273,27 @@ def train_model(
             fp.mkdir(parents=True)
             torch.save(model.state_dict(), checkpoint_path)
 
-            # logger.info("decoding output samples")
-            # output_samples = mu_law_decoding(
-            #     sample_output.argmax(1), config.model_config.input_channels
-            # ).to("cpu")
+            logger.info("decoding output samples")
+            output_samples = mu_law_decoding(
+                sample_output.argmax(1), config.model_config.input_channels
+            ).to("cpu")
 
-            # torch.save(output_samples, fp / "output_samples.pth")
-            # for i, (sample_fp, sample) in enumerate(
-            #     zip(sample_fps, output_samples)
-            # ):
-            #     sample_fp = Path(sample_fp)
-            #     # save original video files
-            #     shutil.copyfile(
-            #         sample_fp, fp / f"original_video_{i}_{sample_fp.stem}.mp4"
-            #     )
-            #     # save generated mp3 file
-            #     torchaudio.save(
-            #         str(fp / f"generated_autio_{i}_{sample_fp.stem}.mp3"),
-            #         # mp3 requires 2 channels (left, right)
-            #         torch.stack([sample, sample]),
-            #         sample_rate=sample.shape[0],
-            #     )
+            torch.save(output_samples, fp / "output_samples.pth")
+            for i, (sample_fp, sample) in enumerate(
+                zip(sample_fps, output_samples)
+            ):
+                sample_fp = Path(sample_fp)
+                # save original video files
+                shutil.copyfile(
+                    sample_fp, fp / f"original_video_{i}_{sample_fp.stem}.mp4"
+                )
+                # save generated mp3 file
+                torchaudio.save(
+                    str(fp / f"generated_autio_{i}_{sample_fp.stem}.mp3"),
+                    # mp3 requires 2 channels (left, right)
+                    torch.stack([sample, sample]),
+                    sample_rate=sample.shape[0],
+                )
 
         dist.barrier()
         # wait for rank 0 to finish writing checkpoint

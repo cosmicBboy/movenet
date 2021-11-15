@@ -35,6 +35,7 @@ train-debug:
 		${INFRA_DEBUG_OPTS} \
 		${DATASET_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}
 
 
@@ -47,6 +48,7 @@ train-debug-gpu:
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}
 
 
@@ -79,6 +81,7 @@ train-gpu:
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \
 		movenet/trainer.py ${TRAIN_OPTS} \
+			--model_output_path models \
 			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
 			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
 			--grid_user_name="${GRID_USERNAME}" \
