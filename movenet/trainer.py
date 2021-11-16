@@ -142,20 +142,33 @@ def train_model(
 
     # sample one batch to save for inspecting predictions, make sure it's
     # consistent over the epochs
-    sample_batch_number = torch.randint(len(valid_dataloader), (1, )).item()
+    sample_batch_number = (
+        torch.randint(len(valid_dataloader), (1, )).item() + 1
+    )
 
     logger.info("defining model")
+    model = WaveNet(**asdict(config.model_config))
     if config.pretrained_model_path:
-        model = torch.load(config.pretrained_model_path)
-    else:
-        model = WaveNet(**asdict(config.model_config))
+        model_state = torch.load(config.pretrained_model_path)
+        if issubclass(type(model_state), nn.Module):
+            model = model_state
+        else:
+            model.load_state_dict(
+               torch.load(
+                    config.pretrained_model_path,
+                    map_location={"cuda:0": f"cuda:{rank}"}
+                )
+            )
+
     logger.info(f"model: {model}")
 
     receptive_fields = model.receptive_fields
 
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
+    distributed = False
     if torch.cuda.is_available():
         if world_size > 1:
+            distributed = True
             model = nn.parallel.DistributedDataParallel(
                 model.cuda(rank),
                 device_ids=[rank],
@@ -217,14 +230,17 @@ def train_model(
         sample_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
-        for step, (audio, video, _, fps) in enumerate(valid_dataloader, 1):
+        for step, (audio, video, contexts, fps) in enumerate(
+            valid_dataloader, 1
+        ):
             if torch.cuda.is_available():
                 audio, video = audio.to(rank), video.to(rank)
             _val_loss, output = validation_step(
                 model, audio, video, receptive_fields
             )
             # wait for all processes to complete the validation step
-            dist.barrier()
+            if distributed:
+                dist.barrier()
 
             val_loss += _val_loss
             mean_val_loss = val_loss / config.batch_size
@@ -244,7 +260,9 @@ def train_model(
                     {"minibatch/loss/val": mean_val_loss, "val_step": total}
                 )
             if rank == 0 and step == sample_batch_number:
-                sample_output = output.to(rank)
+                sample_output = output
+                if torch.cuda.is_available():
+                    sample_output = sample_output.to(rank)
                 sample_fps = fps
 
         if rank == 0:
@@ -295,7 +313,8 @@ def train_model(
                     sample_rate=sample.shape[0],
                 )
 
-        dist.barrier()
+        if distributed:
+            dist.barrier()
         # wait for rank 0 to finish writing checkpoint
         logger.info(f"ending training loop for epoch {epoch}")
         if isinstance(model, nn.parallel.DistributedDataParallel):
@@ -387,7 +406,7 @@ if __name__ == "__main__":
 
     os.environ["WANDB_API_KEY"] = args.wandb_api_key
 
-    if args.pretrained_model_path:
+    if args.pretrained_model_path and args.pretrained_run_exp_name:
         try:
             logging.info("Downloading artifacts")
             subprocess.call([
