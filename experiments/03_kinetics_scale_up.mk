@@ -52,7 +52,7 @@ train-debug-gpu:
 			--wandb_api_key=${WANDB_API_KEY}
 
 
-N_EPOCHS?=3
+N_EPOCHS?=1
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
@@ -68,8 +68,12 @@ INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \
 	--framework torch \
 
-DATASET_OPTS?=--datastore_name kinetics-all \
-	--datastore_version 1 \
+# DATASET_OPTS?=--datastore_name kinetics-all \
+# 	--datastore_version 1 \
+# 	--datastore_mount_dir /opt/datastore \
+
+DATASET_OPTS?=--datastore_name kinetics-breakdancing \
+	--datastore_version 2 \
 	--datastore_mount_dir /opt/datastore \
 
 .PHONY: train-gpu
@@ -82,7 +86,7 @@ train-gpu:
 		${DATASET_OPTS} \
 		movenet/trainer.py ${TRAIN_OPTS} \
 			--model_output_path models \
-			--pretrained_model_path "${PRETRAINED_MODEL_PATH}" \
+			--pretrained_model_path "/artifacts/${PRETRAINED_RUN_EXP_NAME}/models/model.pth" \
 			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
 			--grid_user_name="${GRID_USERNAME}" \
 			--grid_api_key="${GRID_API_KEY}" \

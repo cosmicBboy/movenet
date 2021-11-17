@@ -153,12 +153,7 @@ def train_model(
         if issubclass(type(model_state), nn.Module):
             model = model_state
         else:
-            model.load_state_dict(
-               torch.load(
-                    config.pretrained_model_path,
-                    map_location={"cuda:0": f"cuda:{rank}"}
-                )
-            )
+            model.load_state_dict(torch.load(config.pretrained_model_path))
 
     logger.info(f"model: {model}")
 
@@ -455,6 +450,9 @@ if __name__ == "__main__":
 
     world_size = torch.cuda.device_count()
     if world_size > 1:
+        logging.info(
+            f"Launching distributed training job with world_size: {world_size}"
+        )
         mp.spawn(
             dist_train_model,
             args=(world_size, config, args.dataset, args.model_output_path),
