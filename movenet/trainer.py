@@ -167,15 +167,23 @@ def train_model(
         pretrained_model = torch.load(
             config.pretrained_model_path,
             map_location=(
-                None if not distributed else {"cuda:0": f"cuda:{rank}"}
+                "cpu"
+                if not (torch.cuda.is_available() or distributed)
+                else {"cuda:0": f"cuda:{rank}"}
             ),
         )
-        if issubclass(type(pretrained_model), nn.Module) and distributed:
+        if issubclass(type(pretrained_model), nn.Module):
             logger.info(
                 "Distributing pretrained model from nn.Module: "
                 f"{pretrained_model}"
             )
-            model.load_state_dict(pretrained_model.state_dict())
+            state_dict = pretrained_model.state_dict()
+            if distributed:
+                state_dict = {
+                    f"module.{k}" if not k.startswith("module") else k: v
+                    for k, v in state_dict.items()
+                }
+            model.load_state_dict(state_dict)
         else:
             logger.info(
                 f"Pretrained model from state dict: {pretrained_model}"
@@ -360,7 +368,10 @@ def dist_train_model(
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
         wandb.finish()
-        torch.save(model.state_dict(), model_output_path / "model.pth")
+        torch.save(
+            model.module.cuda(rank).state_dict(),
+            model_output_path / "model.pth"
+        )
 
     dist.destroy_process_group()
 
