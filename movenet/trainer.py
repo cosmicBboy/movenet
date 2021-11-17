@@ -146,31 +146,46 @@ def train_model(
         torch.randint(len(valid_dataloader), (1, )).item() + 1
     )
 
-    logger.info("defining model")
-    model = WaveNet(**asdict(config.model_config))
-    if config.pretrained_model_path:
-        model_state = torch.load(config.pretrained_model_path)
-        if issubclass(type(model_state), nn.Module):
-            model = model_state
-        else:
-            model.load_state_dict(torch.load(config.pretrained_model_path))
-
-    logger.info(f"model: {model}")
-
-    receptive_fields = model.receptive_fields
-
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
+    logger.info("Defining model")
     distributed = False
+    model = WaveNet(**asdict(config.model_config))
     if torch.cuda.is_available():
         if world_size > 1:
             distributed = True
+            logger.info("Training with nn.parallel.DistributedDataParallel")
             model = nn.parallel.DistributedDataParallel(
                 model.cuda(rank),
                 device_ids=[rank],
                 find_unused_parameters=True,
             )
         else:
+            logger.info("Training on gpu")
             model = model.cuda(rank)
+
+    if config.pretrained_model_path:
+        pretrained_model = torch.load(
+            config.pretrained_model_path,
+            map_location=(
+                None if not distributed else {"cuda:0": f"cuda:{rank}"}
+            ),
+        )
+        if issubclass(type(pretrained_model), nn.Module) and distributed:
+            logger.info(
+                "Distributing pretrained model from nn.Module: "
+                f"{pretrained_model}"
+            )
+            model.load_state_dict(pretrained_model.state_dict())
+        else:
+            logger.info(
+                f"Pretrained model from state dict: {pretrained_model}"
+            )
+            model.load_state_dict(pretrained_model)
+
+    if rank == 0:
+        logger.info(f"Model: {model}")
+
+    receptive_fields = model.receptive_fields
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
@@ -316,8 +331,7 @@ def train_model(
             logger.info("loading distributed model from checkpoints")
             model.load_state_dict(
                 torch.load(
-                    checkpoint_path,
-                    map_location={"cuda:0": f"cuda:{rank}"}
+                    checkpoint_path, map_location={"cuda:0": f"cuda:{rank}"}
                 )
             )
 
@@ -463,4 +477,4 @@ if __name__ == "__main__":
         # initialize wandb
         wandb_setup()
         model = train_model(config, args.dataset)
-        torch.save(model, args.model_output_path / "model.pth")
+        torch.save(model.state_dict(), args.model_output_path / "model.pth")

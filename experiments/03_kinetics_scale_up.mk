@@ -12,18 +12,17 @@ TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
-	--datastore_mount_dir /opt/datastore \
+	--datastore_mount_dir /opt/datastore
 
 DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-breakdancing \
 	--datastore_version 2 \
-	--datastore_mount_dir /opt/datastore \
+	--datastore_mount_dir /opt/datastore
 
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
 	--memory 60G \
-	--framework torch \
+	--framework torch
 
 
-PRETRAINED_MODEL_PATH?=
 PRETRAINED_RUN_EXP_NAME?=
 
 
@@ -74,7 +73,7 @@ INFRA_OPTS?=--scratch_size 512 \
 
 DATASET_OPTS?=--datastore_name kinetics-breakdancing \
 	--datastore_version 2 \
-	--datastore_mount_dir /opt/datastore \
+	--datastore_mount_dir /opt/datastore
 
 .PHONY: train-gpu
 train-gpu:
