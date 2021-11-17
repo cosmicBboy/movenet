@@ -51,7 +51,7 @@ train-debug-gpu:
 			--wandb_api_key=${WANDB_API_KEY}
 
 
-N_EPOCHS?=1
+N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
@@ -67,13 +67,9 @@ INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \
 	--framework torch \
 
-# DATASET_OPTS?=--datastore_name kinetics-all \
-# 	--datastore_version 1 \
-# 	--datastore_mount_dir /opt/datastore \
-
-DATASET_OPTS?=--datastore_name kinetics-breakdancing \
-	--datastore_version 2 \
-	--datastore_mount_dir /opt/datastore
+DATASET_OPTS?=--datastore_name kinetics-all \
+	--datastore_version 1 \
+	--datastore_mount_dir /opt/datastore \
 
 .PHONY: train-gpu
 train-gpu:
