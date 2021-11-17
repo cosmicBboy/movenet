@@ -190,7 +190,7 @@ def train_model(
                 for k, v in state_dict.items()
             }
 
-        model.load_state_dict(pretrained_model)
+        model.load_state_dict(state_dict)
 
     if rank == 0:
         logger.info(f"Model: {model}")
