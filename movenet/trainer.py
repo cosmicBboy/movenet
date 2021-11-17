@@ -176,22 +176,21 @@ def train_model(
             ),
         )
         if issubclass(type(pretrained_model), nn.Module):
-            logger.info(
-                "Distributing pretrained model from nn.Module: "
-                f"{pretrained_model}"
-            )
+            logger.info("pretrained model is an nn.Module")
             state_dict = pretrained_model.state_dict()
-            if distributed:
-                state_dict = {
-                    f"module.{k}" if not k.startswith("module") else k: v
-                    for k, v in state_dict.items()
-                }
+            
             model.load_state_dict(state_dict)
         else:
-            logger.info(
-                f"Pretrained model from state dict: {pretrained_model}"
-            )
-            model.load_state_dict(pretrained_model)
+            logger.info(f"Pretrained model is a state dict.")
+            state_dict = pretrained_model
+
+        if distributed:
+            state_dict = {
+                f"module.{k}" if not k.startswith("module") else k: v
+                for k, v in state_dict.items()
+            }
+
+        model.load_state_dict(pretrained_model)
 
     if rank == 0:
         logger.info(f"Model: {model}")
