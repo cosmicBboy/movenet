@@ -148,8 +148,11 @@ def train_model(
 
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
     logger.info("Defining model")
+
     distributed = False
     model = WaveNet(**asdict(config.model_config))
+    receptive_fields = model.receptive_fields
+
     if torch.cuda.is_available():
         if world_size > 1:
             distributed = True
@@ -192,8 +195,6 @@ def train_model(
 
     if rank == 0:
         logger.info(f"Model: {model}")
-
-    receptive_fields = model.receptive_fields
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
