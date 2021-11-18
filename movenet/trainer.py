@@ -63,8 +63,14 @@ class TrainingConfig:
     model_config: ModelConfig = ModelConfig()
     batch_size: int = 3
     checkpoint_every: int = 25
-    optimizer: str = "Adam"
+    optimizer: str = "AdamW"
+    scheduler: str = "OneCycleLR"
     learning_rate: float = 0.0002
+
+    # found through learning rate range experiment:
+    # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
+    max_learning_rate: float = 0.00003
+
     weight_decay: float = 0.0
     n_epochs: int = 100
     n_steps_per_epoch: Optional[int] = None
@@ -193,18 +199,19 @@ def train_model(
     if rank == 0:
         logger.info(f"Model: {model}")
 
-    # MANUAL LEARNING RATE RANGE TEST
-    learning_rates = [
-        3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1,
-        3e-1, 1, 3, 10
-    ]
-
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
-        # lr=config.learning_rate,
-        lr=1e-7,
+        lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
+    scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
+        optimizer,
+        max_lr=config.max_learning_rate,
+        epochs=config.n_epochs,
+        steps_per_epoch=len(dataloader),
+        three_phase=True,
+    )
+
     # training loop
     if rank == 0:
         writer = SummaryWriter(config.tensorboard_dir)
@@ -220,6 +227,7 @@ def train_model(
             loss, grad_norm = training_step(
                 model, optimizer, audio, video, receptive_fields
             )
+            scheduler.step()
             train_loss += loss
 
             prog = step / len(dataloader)
@@ -289,13 +297,8 @@ def train_model(
                     sample_output = sample_output.to(rank)
                 sample_fps = fps
 
-        # MANUAL UPDATE LEARNING RATE
-        learning_rate = optimizer.param_groups[0]["lr"]
-        optimizer.param_groups[0]["lr"] = learning_rates[
-            epoch if epoch < len(learning_rates) else -1
-        ]
-
         if rank == 0:
+            learning_rate = optimizer.param_groups[0]["lr"]
             logger.info(f"computing training and validation loss")
             train_loss /= len(dataloader.dataset)
             val_loss /= len(valid_dataloader.dataset)

@@ -3,7 +3,7 @@ N_DEBUG_EPOCHS?=10
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
 	--batch_size 2 \
-	--learning_rate 0.0003 \
+	--learning_rate 0.00003 \
 	--input_channels 64 \
 	--residual_channels 64 \
 	--layer_size 3 \
@@ -46,6 +46,7 @@ train-debug-gpu:
 		--cpus 30  \
 		--gpus 4 \
 		--ignore_warnings \
+		--use_spot \
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
@@ -58,7 +59,7 @@ N_EPOCHS?=1
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
 	--batch_size 4 \
-	--learning_rate 0.0003 \
+	--learning_rate 0.00003 \
 	--input_channels 64 \
 	--residual_channels 64 \
 	--layer_size 3 \
