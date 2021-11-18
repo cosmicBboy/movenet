@@ -195,13 +195,14 @@ def train_model(
 
     # MANUAL LEARNING RATE RANGE TEST
     learning_rates = [
-        3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1, 3e-1, 1, 3, 10
+        3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1,
+        3e-1, 1, 3, 10
     ]
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         # lr=config.learning_rate,
-        lr=1e-5,
+        lr=1e-7,
         weight_decay=config.weight_decay,
     )
     # training loop
@@ -311,7 +312,7 @@ def train_model(
 
             wandb.log({"loss/train": train_loss, "epoch": epoch})
             wandb.log({"loss/val": val_loss, "epoch": epoch})
-            wandb.log({"loss/learning_rate": learning_rate, "epoch": epoch})
+            wandb.log({"learning_rate": learning_rate, "epoch": epoch})
 
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
