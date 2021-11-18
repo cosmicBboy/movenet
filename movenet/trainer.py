@@ -94,9 +94,9 @@ def training_step(model, optimizer, audio, video, receptive_fields):
     grad_norm = 0.
     for param in model.parameters():
         if param.grad is not None:
-            grad_norm += param.grad.data.norm(2).item() ** 2
+            grad_norm += param.grad.data.norm(2).detach() ** 2
     grad_norm = grad_norm ** 0.5
-    loss = loss.data.item()
+    loss = loss.data.detach()
     optimizer.step()
     return loss, grad_norm
 
@@ -108,7 +108,7 @@ def validation_step(model, audio, video, receptive_fields):
     #   generate full audio sequence
     output = model(audio, video)
     target = audio[:, :, receptive_fields:].argmax(1)
-    loss = F.cross_entropy(output, target).item()
+    loss = F.cross_entropy(output, target).detach()
     return loss, output
 
 
@@ -126,7 +126,7 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=True,
-        num_workers=0,
+        pin_memory=True,
     )
 
     valid_dataloader = dataset.get_dataloader(
@@ -137,13 +137,13 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=False,
-        num_workers=0,
+        pin_memory=True,
     )
 
     # sample one batch to save for inspecting predictions, make sure it's
     # consistent over the epochs
     sample_batch_number = (
-        torch.randint(len(valid_dataloader), (1, )).item() + 1
+        torch.randint(len(valid_dataloader), (1, )).detach() + 1
     )
 
     logger.info(f"CUDA AVAILABLE: {torch.cuda.is_available()}")
@@ -195,9 +195,15 @@ def train_model(
     if rank == 0:
         logger.info(f"Model: {model}")
 
+    # MANUAL LEARNING RATE RANGE TEST
+    learning_rates = [
+        3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1, 3e-1, 1, 3, 10
+    ]
+
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
-        lr=config.learning_rate,
+        # lr=config.learning_rate,
+        lr=1e-5,
         weight_decay=config.weight_decay,
     )
     # training loop
@@ -248,6 +254,7 @@ def train_model(
         sample_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
+
         for step, (audio, video, contexts, fps) in enumerate(
             valid_dataloader, 1
         ):
@@ -283,6 +290,12 @@ def train_model(
                     sample_output = sample_output.to(rank)
                 sample_fps = fps
 
+        # MANUAL UPDATE LEARNING RATE
+        learning_rate = optimizer.param_groups[0]["lr"]
+        optimizer.param_groups[0]["lr"] = learning_rates[
+            epoch if epoch < len(learning_rates) else -1
+        ]
+
         if rank == 0:
             logger.info(f"computing training and validation loss")
             train_loss /= len(dataloader.dataset)
@@ -290,14 +303,17 @@ def train_model(
             logger.info(
                 f"[epoch {epoch}] "
                 f"train_loss={train_loss:0.08f}, "
-                f"val_loss={loss:0.08f}"
+                f"val_loss={loss:0.08f}, "
+                f"learning_rate={learning_rate:0.08f}"
             )
             writer.add_scalar("epochs", epoch, epoch)
             writer.add_scalar("loss/train", train_loss, epoch)
             writer.add_scalar("loss/val", val_loss, epoch)
+            writer.add_scalar("learning_rate", learning_rate, epoch)
 
             wandb.log({"loss/train": train_loss, "epoch": epoch})
             wandb.log({"loss/val": val_loss, "epoch": epoch})
+            wandb.log({"loss/learning_rate": learning_rate, "epoch": epoch})
 
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"

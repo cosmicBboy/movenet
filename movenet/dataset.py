@@ -126,6 +126,7 @@ def get_dataloader(
         batch_size=batch_size,
         collate_fn=partial(make_batch, input_channels),
         sampler=sampler,
+        num_workers=world_size,
         **kwargs
     )
 

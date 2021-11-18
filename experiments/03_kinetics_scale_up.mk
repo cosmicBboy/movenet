@@ -1,4 +1,4 @@
-N_DEBUG_EPOCHS?=1
+N_DEBUG_EPOCHS?=10
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
@@ -51,6 +51,19 @@ train-debug-gpu:
 			--wandb_api_key=${WANDB_API_KEY}
 
 
+.PHONY: train-lr-exp-gpu
+train-lr-exp-gpu:
+	grid run --dockerfile Dockerfile-gpu \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
+		${INFRA_INFRA_DEBUG_OPTS} \
+		${DATASET_GPU_DEBUG_OPTS} \
+		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
+			--model_output_path models \
+			--wandb_api_key=${WANDB_API_KEY}
+
+
 N_EPOCHS?=1
 
 TRAIN_OPTS?=--dataset /opt/datastore \
@@ -75,9 +88,9 @@ DATASET_OPTS?=--datastore_name kinetics-all \
 .PHONY: train-gpu
 train-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3dn.24xlarge \
-		--cpus 92  \
-		--gpus 8 \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
 		--ignore_warnings \
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \
