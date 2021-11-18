@@ -51,11 +51,11 @@ train-debug-gpu:
 			--wandb_api_key=${WANDB_API_KEY}
 
 
-N_EPOCHS?=3
+N_EPOCHS?=1
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
-	--batch_size 2 \
+	--batch_size 4 \
 	--learning_rate 0.0003 \
 	--input_channels 64 \
 	--residual_channels 64 \
@@ -66,6 +66,7 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \
 	--framework torch \
+	--use_spot
 
 DATASET_OPTS?=--datastore_name kinetics-all \
 	--datastore_version 1 \
@@ -74,9 +75,10 @@ DATASET_OPTS?=--datastore_name kinetics-all \
 .PHONY: train-gpu
 train-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--instance_type p3dn.24xlarge \
+		--cpus 92  \
+		--gpus 8 \
+		--ignore_warnings \
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \
 		movenet/trainer.py ${TRAIN_OPTS} \
