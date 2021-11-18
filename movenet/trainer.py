@@ -126,7 +126,6 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=True,
-        pin_memory=True,
     )
 
     valid_dataloader = dataset.get_dataloader(
@@ -137,7 +136,6 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=False,
-        pin_memory=True,
     )
 
     # sample one batch to save for inspecting predictions, make sure it's

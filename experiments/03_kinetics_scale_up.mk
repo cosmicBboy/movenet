@@ -31,6 +31,7 @@ train-debug:
 	grid run --dockerfile Dockerfile \
 		--instance_type t2.2xlarge \
 		--cpus 7  \
+		--ignore_warnings \
 		${INFRA_DEBUG_OPTS} \
 		${DATASET_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
@@ -44,19 +45,7 @@ train-debug-gpu:
 		--instance_type p3.8xlarge \
 		--cpus 30  \
 		--gpus 4 \
-		${INFRA_INFRA_DEBUG_OPTS} \
-		${DATASET_GPU_DEBUG_OPTS} \
-		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
-			--model_output_path models \
-			--wandb_api_key=${WANDB_API_KEY}
-
-
-.PHONY: train-lr-exp-gpu
-train-lr-exp-gpu:
-	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--ignore_warnings \
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
