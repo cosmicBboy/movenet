@@ -3,7 +3,7 @@ dataclasses==0.6
 dataclasses-json==0.5.2
 joblib
 librosa
-numpy
+numpy==1.20
 torch==1.10.0
 torchvision
 torchaudio
