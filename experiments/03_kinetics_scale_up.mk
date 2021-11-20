@@ -57,7 +57,7 @@ N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
-	--batch_size 4 \
+	--batch_size 2 \
 	--learning_rate 0.00003 \
 	--input_channels 64 \
 	--residual_channels 64 \
@@ -76,9 +76,9 @@ DATASET_OPTS?=--datastore_name kinetics-all \
 .PHONY: train-gpu
 train-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--instance_type p3.16xlarge \
+		--cpus 60  \
+		--gpus 8 \
 		--ignore_warnings \
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \

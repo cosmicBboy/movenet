@@ -243,13 +243,13 @@ def train_model(
             loss, grad_norm = training_step(
                 model, optimizer, audio, video, receptive_fields, scaler=scaler
             )
-            scheduler.step()
             train_loss += loss
 
             prog = step / len(dataloader)
             mean_loss = loss / config.batch_size
             total = epoch * len(dataloader) + step
             if rank == 0:
+                batch_lr = optimizer.param_groups[0]["lr"]
                 logger.info(
                     f"[epoch {epoch} | step {step}] "
                     f"batch_progress={prog}, "
@@ -259,6 +259,7 @@ def train_model(
                 writer.add_scalar("minibatch/progress/train", prog, total)
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
+                writer.add_scalar("minibatch/learning_rate", batch_lr, total)
 
                 wandb.log(
                     {"minibatch/progress/train": prog, "train_step": total}
@@ -269,6 +270,11 @@ def train_model(
                 wandb.log(
                     {"minibatch/grad_norm": grad_norm, "train_step": total}
                 )
+                wandb.log(
+                    {"minibatch/learning_rate": batch_lr, "train_step": total}
+                )
+            
+            scheduler.step()
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
