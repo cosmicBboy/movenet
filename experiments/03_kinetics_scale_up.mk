@@ -46,7 +46,6 @@ train-debug-gpu:
 		--cpus 30  \
 		--gpus 4 \
 		--ignore_warnings \
-		--use_spot \
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
@@ -54,7 +53,7 @@ train-debug-gpu:
 			--wandb_api_key=${WANDB_API_KEY}
 
 
-N_EPOCHS?=1
+N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
@@ -68,8 +67,7 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 
 INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \
-	--framework torch \
-	--use_spot
+	--framework torch
 
 DATASET_OPTS?=--datastore_name kinetics-all \
 	--datastore_version 1 \

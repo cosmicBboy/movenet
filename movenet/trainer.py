@@ -90,12 +90,20 @@ class TrainingConfig:
     )
 
 
-def training_step(model, optimizer, audio, video, receptive_fields):
-    output = model(audio, video)
-    target = audio[:, :, receptive_fields:].argmax(1)
-    loss = F.cross_entropy(output, target)
-    optimizer.zero_grad()
-    loss.backward()
+def training_step(
+    model, optimizer, audio, video, receptive_fields, scaler=None
+):
+    with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
+        output = model(audio, video)
+        target = audio[:, :, receptive_fields:].argmax(1)
+        loss = F.cross_entropy(output, target)
+
+    optimizer.zero_grad(set_to_none=True)
+
+    if scaler:
+        scaler.scale(loss).backward()
+    else:
+        loss.backward()
 
     grad_norm = 0.
     for param in model.parameters():
@@ -103,7 +111,13 @@ def training_step(model, optimizer, audio, video, receptive_fields):
             grad_norm += param.grad.data.norm(2).detach() ** 2
     grad_norm = grad_norm ** 0.5
     loss = loss.data.detach()
-    optimizer.step()
+
+    if scaler:
+        scaler.step(optimizer)
+        scaler.update()
+    else:
+        optimizer.step()
+
     return loss, grad_norm
 
 
@@ -216,6 +230,8 @@ def train_model(
     if rank == 0:
         writer = SummaryWriter(config.tensorboard_dir)
 
+
+    scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
     for epoch in range(config.n_epochs):
 
         model.train()
@@ -225,7 +241,7 @@ def train_model(
             if torch.cuda.is_available():
                 audio, video = audio.to(rank), video.to(rank)
             loss, grad_norm = training_step(
-                model, optimizer, audio, video, receptive_fields
+                model, optimizer, audio, video, receptive_fields, scaler=scaler
             )
             scheduler.step()
             train_loss += loss
@@ -327,6 +343,11 @@ def train_model(
             fp.mkdir(parents=True)
             torch.save(model.state_dict(), checkpoint_path)
 
+            module = model if not distributed else model.module.cuda(rank)
+            torch.save(
+                module.state_dict(), config.model_output_path / "model.pth"
+            )
+
             logger.info("decoding output samples")
             output_samples = mu_law_decoding(
                 sample_output.argmax(1), config.model_config.input_channels
@@ -370,7 +391,6 @@ def dist_train_model(
     world_size: int,
     config: TrainingConfig,
     dataset_fp: str,
-    model_output_path: Path,
 ):
     configure_logging()
 
@@ -388,7 +408,7 @@ def dist_train_model(
         wandb.finish()
         torch.save(
             model.module.cuda(rank).state_dict(),
-            model_output_path / "model.pth"
+            config.model_output_path / "model.pth"
         )
 
     dist.destroy_process_group()
@@ -498,7 +518,7 @@ if __name__ == "__main__":
         )
         mp.spawn(
             dist_train_model,
-            args=(world_size, config, args.dataset, args.model_output_path),
+            args=(world_size, config, args.dataset),
             nprocs=world_size,
             join=True
         )
