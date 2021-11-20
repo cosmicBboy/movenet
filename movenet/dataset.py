@@ -120,7 +120,12 @@ def get_dataloader(
             num_replicas=1 if not world_size else world_size,
             shuffle=True
         )
+        kwargs.update({
+            "pin_memory": True,
+            "num_workers": world_size * 4,
+        })
         kwargs.pop("shuffle")
+        logger.info(f"DataLoader kwargs: {kwargs}")
     return torch.utils.data.DataLoader(
         KineticsDataset(filepath, train=train),
         batch_size=batch_size,
@@ -128,6 +133,22 @@ def get_dataloader(
         sampler=sampler,
         **kwargs
     )
+
+
+class Batch:
+    def __init__(self, audio, video, contexts, filepaths):
+        self.audio = audio
+        self.video = video
+        self.contexts = contexts
+        self.filepaths = filepaths
+
+    def pin_memory(self):
+        self.audio = self.audio.pin_memory()
+        self.video = self.video.pin_memory()
+        self.contexts = self.contexts.pin_memory()
+
+    def __iter__(self):
+        yield from (self.audio, self.video, self.contexts, self.filepaths)
 
 
 def make_batch(input_channels: int, examples: List[Example]):
@@ -157,7 +178,7 @@ def make_batch(input_channels: int, examples: List[Example]):
             "No audio or video found in this batch: "
             f"audio: {len(audio)}, video: {len(video)}"
         )
-    return torch.stack(audio), torch.stack(video), contexts, filepaths
+    return Batch(torch.stack(audio), torch.stack(video), contexts, filepaths)
 
 
 def resample_audio(

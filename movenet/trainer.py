@@ -45,7 +45,11 @@ def configure_logging():
 
 def wandb_setup():
     wandb.login()
-    wandb.init(project="dance2music", entity="nielsbantilan")
+    wandb.init(
+        project="dance2music",
+        entity="nielsbantilan",
+        name=os.getenv("GRID_EXPERIMENT_NAME", None)
+    )
 
 
 @dataclass_json

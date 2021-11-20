@@ -2,7 +2,7 @@ N_DEBUG_EPOCHS?=10
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
-	--batch_size 2 \
+	--batch_size 3 \
 	--learning_rate 0.00003 \
 	--input_channels 64 \
 	--residual_channels 64 \
@@ -42,9 +42,9 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--instance_type p3dn.24xlarge \
+		--cpus 90  \
+		--gpus 8 \
 		--ignore_warnings \
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \
@@ -57,7 +57,7 @@ N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
-	--batch_size 2 \
+	--batch_size 3 \
 	--learning_rate 0.00003 \
 	--input_channels 64 \
 	--residual_channels 64 \
