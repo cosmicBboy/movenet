@@ -32,6 +32,8 @@ from movenet.wavenet import (
     MAX_VIDEO_FRAMES,
 )
 
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+
 
 logger = logging.getLogger(__file__)
 
