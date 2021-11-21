@@ -42,9 +42,9 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3dn.24xlarge \
-		--cpus 90  \
-		--gpus 8 \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
 		--ignore_warnings \
 		${INFRA_INFRA_DEBUG_OPTS} \
 		${DATASET_GPU_DEBUG_OPTS} \

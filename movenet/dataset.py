@@ -145,7 +145,6 @@ class Batch:
     def pin_memory(self):
         self.audio = self.audio.pin_memory()
         self.video = self.video.pin_memory()
-        self.contexts = self.contexts.pin_memory()
 
     def __iter__(self):
         yield from (self.audio, self.video, self.contexts, self.filepaths)
