@@ -122,7 +122,7 @@ def get_dataloader(
         )
         kwargs.update({
             "pin_memory": True,
-            "num_workers": world_size * 4,
+            "num_workers": 2,
         })
         kwargs.pop("shuffle")
         logger.info(f"DataLoader kwargs: {kwargs}")
