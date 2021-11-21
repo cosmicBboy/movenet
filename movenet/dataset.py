@@ -120,10 +120,13 @@ def get_dataloader(
             num_replicas=1 if not world_size else world_size,
             shuffle=True
         )
+        kwargs.update({
+            "pin_memory": True,
+        })
         kwargs.pop("shuffle")
         logger.info(f"DataLoader kwargs: {kwargs}")
     return torch.utils.data.DataLoader(
-        KineticsDataset(filepath, train=train),
+        dataset,
         batch_size=batch_size,
         collate_fn=partial(make_batch, input_channels),
         sampler=sampler,
