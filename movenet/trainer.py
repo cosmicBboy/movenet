@@ -97,9 +97,11 @@ class TrainingConfig:
 
 
 def training_step(
-    model, optimizer, audio, video, receptive_fields, scaler=None
+    model, optimizer, audio, video, receptive_fields, rank=0, scaler=None
 ):
     with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
+        if torch.cuda.is_available():
+            audio, video = audio.to(rank), video.to(rank)
         output = model(audio, video)
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
@@ -128,13 +130,16 @@ def training_step(
 
 
 @torch.no_grad()
-def validation_step(model, audio, video, receptive_fields):
+def validation_step(model, audio, video, receptive_fields, rank=0):
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
-    output = model(audio, video)
-    target = audio[:, :, receptive_fields:].argmax(1)
-    loss = F.cross_entropy(output, target).detach()
+    with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
+        if torch.cuda.is_available():
+            audio, video = audio.to(rank), video.to(rank)
+        output = model(audio, video)
+        target = audio[:, :, receptive_fields:].argmax(1)
+        loss = F.cross_entropy(output, target).detach()
     return loss, output
 
 
@@ -240,14 +245,15 @@ def train_model(
     scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
     for epoch in range(config.n_epochs):
 
+        if distributed:
+            dataloader.sampler.set_epoch(epoch)
+
         model.train()
         train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
         for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
-            if torch.cuda.is_available():
-                audio, video = audio.to(rank), video.to(rank)
             loss, grad_norm = training_step(
-                model, optimizer, audio, video, receptive_fields, scaler=scaler
+                model, optimizer, audio, video, receptive_fields, rank, scaler,
             )
             train_loss += loss
 
@@ -293,10 +299,8 @@ def train_model(
         for step, (audio, video, contexts, fps) in enumerate(
             valid_dataloader, 1
         ):
-            if torch.cuda.is_available():
-                audio, video = audio.to(rank), video.to(rank)
             _val_loss, output = validation_step(
-                model, audio, video, receptive_fields
+                model, audio, video, receptive_fields, rank
             )
             # wait for all processes to complete the validation step
             if distributed:

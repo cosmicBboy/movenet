@@ -51,7 +51,7 @@ class WaveNet(nn.Module):
         self,
         layer_size: int,
         stack_size: int,
-        input_channels: int,
+        input_channels: int,  # audio input channels
         residual_channels: int,
         video_in_channels: int = 3,
     ):
@@ -66,14 +66,14 @@ class WaveNet(nn.Module):
         # modules
         self.video_conv = nn.Conv3d(
             in_channels=video_in_channels,
-            out_channels=input_channels,
+            out_channels=residual_channels,
             kernel_size=VIDEO_KERNEL_SIZE,
         )
         # perform two layers of conv transpose
         self.video_transpose = nn.Sequential(*[
             nn.ConvTranspose1d(
-                in_channels=input_channels,
-                out_channels=input_channels,
+                in_channels=residual_channels,
+                out_channels=residual_channels,
                 kernel_size=k,
                 stride=s,
             )
@@ -114,14 +114,16 @@ class WaveNet(nn.Module):
         global_features: TensorType = None,
     ):
         video = self.upsample_video(video)
+        audio = self.causal_conv(audio)
         assert video.size() == audio.size(), (
             "expected video and audio tensors to have equal sizes, found "
             f"{video.size()}, {audio.size()}"
         )
         skip_connections = self.residual_conv_stack(
-            input=self.causal_conv(audio),
+            input=audio,
             context=video,
             skip_size=self.compute_output_size(audio)
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
+        import ipdb; ipdb.set_trace()
         return output
