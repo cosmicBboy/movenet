@@ -125,5 +125,4 @@ class WaveNet(nn.Module):
             skip_size=self.compute_output_size(audio)
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
-        import ipdb; ipdb.set_trace()
         return output
