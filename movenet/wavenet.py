@@ -53,7 +53,7 @@ class WaveNet(nn.Module):
         stack_size: int,
         input_channels: int,  # audio input channels
         residual_channels: int,
-        video_in_channels: int = 3,
+        video_in_channels: int = 1,
     ):
         super().__init__()
         

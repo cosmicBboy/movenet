@@ -19,6 +19,7 @@ import torchaudio
 import torchaudio.functional
 import torchvision.io
 from pytorchvideo.transforms.functional import uniform_temporal_subsample
+from torchvision.transforms.functional import rgb_to_grayscale
 from torchaudio.functional import mu_law_encoding
 from torchtyping import TensorType
 
@@ -226,12 +227,12 @@ def resize_video(
         sampled_video = sampled_video[:num_samples]
     video_resized = torch.zeros(
         sampled_video.shape[0],
-        sampled_video.shape[1],
+        1,  # downsampling from RGB to Grayscale
         *VIDEO_KERNEL_SIZE[1:]
     )
     for i, frame in enumerate(sampled_video):
         video_resized[i] = torchvision.transforms.functional.resize(
-            frame, size=VIDEO_KERNEL_SIZE[1:]
+            rgb_to_grayscale(frame), size=VIDEO_KERNEL_SIZE[1:]
         )
     return video_resized.permute(0, 2, 3, 1)
 

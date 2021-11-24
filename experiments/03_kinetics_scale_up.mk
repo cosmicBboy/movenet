@@ -2,12 +2,12 @@ N_DEBUG_EPOCHS?=10
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
-	--batch_size 3 \
+	--batch_size 4 \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
-	--residual_channels 32 \
-	--layer_size 2 \
-	--stack_size 2 \
+	--residual_channels 16 \
+	--layer_size 1 \
+	--stack_size 3 \
 	--checkpoint_every 1
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
