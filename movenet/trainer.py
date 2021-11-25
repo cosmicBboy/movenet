@@ -518,7 +518,11 @@ if __name__ == "__main__":
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
         dist_backend=args.dist_backend,
-        pretrained_model_path=args.pretrained_model_path,
+        pretrained_model_path=(
+            args.pretrained_model_path
+            if args.pretrained_model_path and args.pretrained_run_exp_name
+            else None
+        ),
         model_output_path=args.model_output_path,
         tensorboard_dir=args.training_logs_path,
     )
