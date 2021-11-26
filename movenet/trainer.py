@@ -112,12 +112,13 @@ def training_step(
     del video
 
     optimizer.zero_grad(set_to_none=True)
-    nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
 
     if scaler:
         scaler.scale(loss).backward()
     else:
         loss.backward()
+
+    nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
 
     grad_norm = 0.
     for param in model.parameters():
