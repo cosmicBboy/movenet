@@ -34,6 +34,8 @@ from movenet.wavenet import (
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
+CLIP_GRAD = 10.0
+
 
 logger = logging.getLogger(__file__)
 
@@ -106,7 +108,11 @@ def training_step(
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
 
+    del audio
+    del video
+
     optimizer.zero_grad(set_to_none=True)
+    nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
 
     if scaler:
         scaler.scale(loss).backward()
@@ -116,9 +122,9 @@ def training_step(
     grad_norm = 0.
     for param in model.parameters():
         if param.grad is not None:
-            grad_norm += param.grad.data.norm(2).detach() ** 2
+            grad_norm += param.grad.norm(2).detach().cpu() ** 2
     grad_norm = grad_norm ** 0.5
-    loss = loss.data.detach()
+    loss = loss.detach().cpu()
 
     if scaler:
         scaler.step(optimizer)
@@ -140,6 +146,10 @@ def validation_step(model, audio, video, receptive_fields, rank=0):
         output = model(audio, video)
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach()
+
+    del audio
+    del video
+
     return loss, output
 
 

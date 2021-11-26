@@ -220,21 +220,21 @@ def resize_video(
     video: TensorType["frames", "channels", "height", "width"],
     num_samples: int = MAX_VIDEO_FRAMES,
 ) -> List[TensorType["frames", "channels", "height", "width"]]:
-    sampled_video = uniform_temporal_subsample(
-        video, num_samples=num_samples, temporal_dim=0
-    )
-    if sampled_video.shape[0] > num_samples:
-        sampled_video = sampled_video[:num_samples]
     video_resized = torch.zeros(
-        sampled_video.shape[0],
+        video.shape[0],
         1,  # downsampling from RGB to Grayscale
         *VIDEO_KERNEL_SIZE[1:]
     )
-    for i, frame in enumerate(sampled_video):
+    for i, frame in enumerate(video):
         video_resized[i] = torchvision.transforms.functional.resize(
             rgb_to_grayscale(frame), size=VIDEO_KERNEL_SIZE[1:]
         )
-    return video_resized.permute(0, 2, 3, 1)
+    sampled_video = uniform_temporal_subsample(
+        video_resized, num_samples=num_samples, temporal_dim=0
+    )
+    if sampled_video.shape[0] > num_samples:
+        sampled_video = sampled_video[:num_samples]
+    return sampled_video.permute(0, 2, 3, 1)
 
 
 if __name__ == "__main__":
