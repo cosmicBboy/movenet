@@ -6,14 +6,13 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-from typing import Any, Dict, List, Optional
+from typing import List, NamedTuple
 
 try:
     from typing import TypedDict
 except:
     from typing_extensions import TypedDict
 
-import librosa
 import torch
 import torchaudio
 import torchaudio.functional
@@ -36,14 +35,13 @@ VIDEO_KERNEL_SIZE = (1, 10, 10)
 
 Info = TypedDict("info", video_fps=float, audio_fps=float)
 
-@dataclass
-class RawMetadata:
+
+class RawMetadata(NamedTuple):
     context: str
     filepath: str
 
 
-@dataclass
-class Example:
+class Example(NamedTuple):
     context: str
     filepath: str
     video: TensorType[float]
@@ -174,8 +172,8 @@ def resample_audio(
     audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
 ) -> TensorType["channels", "frames"]:
     x = audio.mean(dim=0)
-    resampled_audio = torch.from_numpy(
-        librosa.resample(x.numpy(), x.shape[0], freq)
+    resampled_audio = torchaudio.functional.resample(
+        x, x.shape[0], freq
     ).reshape(1, -1)
     if resampled_audio.shape[1] > freq:
         resampled_audio = resampled_audio[:, :freq]
@@ -230,7 +228,6 @@ def resize_video(
 
 
 if __name__ == "__main__":
-    import sys
     import time
     from argparse import ArgumentParser
 

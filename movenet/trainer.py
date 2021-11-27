@@ -1,6 +1,7 @@
 """Train the movenet model."""
 
 import json
+import gc
 import logging
 import os
 import shutil
@@ -110,11 +111,13 @@ def training_step(
 
     del audio
     del video
+    gc.collect()
 
     optimizer.zero_grad(set_to_none=True)
 
     if scaler:
         scaler.scale(loss).backward()
+        scaler.unscale_(optimizer)
     else:
         loss.backward()
 
@@ -123,9 +126,9 @@ def training_step(
     grad_norm = 0.
     for param in model.parameters():
         if param.grad is not None:
-            grad_norm += param.grad.norm(2).detach().cpu() ** 2
+            grad_norm += param.grad.detach().cpu().norm(2) ** 2
     grad_norm = grad_norm ** 0.5
-    loss = loss.detach().cpu()
+    loss = loss.detach().cpu().item()
 
     if scaler:
         scaler.step(optimizer)
