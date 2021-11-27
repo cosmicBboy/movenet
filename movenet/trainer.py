@@ -109,9 +109,9 @@ def training_step(
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
 
+    del output
     del audio
     del video
-    gc.collect()
 
     optimizer.zero_grad(set_to_none=True)
 
@@ -126,7 +126,7 @@ def training_step(
     grad_norm = 0.
     for param in model.parameters():
         if param.grad is not None:
-            grad_norm += param.grad.detach().cpu().norm(2) ** 2
+            grad_norm += param.grad.detach().norm(2).cpu().item() ** 2
     grad_norm = grad_norm ** 0.5
     loss = loss.detach().cpu().item()
 
@@ -135,8 +135,6 @@ def training_step(
         scaler.update()
     else:
         optimizer.step()
-
-    gc.collect()
 
     return loss, grad_norm
 
@@ -151,8 +149,9 @@ def validation_step(model, audio, video, receptive_fields, rank=0):
             audio, video = audio.to(rank), video.to(rank)
         output = model(audio, video)
         target = audio[:, :, receptive_fields:].argmax(1)
-        loss = F.cross_entropy(output, target).detach()
+        loss = F.cross_entropy(output, target).detach().item()
 
+    del output
     del audio
     del video
 
@@ -260,7 +259,7 @@ def train_model(
 
     scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
 
-    from torch.profiler import profile, record_function, ProfilerActivity
+    from torch.profiler import profile, ProfilerActivity
 
     for epoch in range(config.n_epochs):
 
@@ -279,6 +278,7 @@ def train_model(
                 loss, grad_norm = training_step(
                     model, optimizer, audio, video, receptive_fields, rank, scaler,
                 )
+                gc.collect()
                 train_loss += loss
 
                 prog = step / len(dataloader)
