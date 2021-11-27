@@ -262,7 +262,7 @@ def train_model(
         model.train()
         train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
-        for step, (audio, video, contexts, _) in enumerate(dataloader, 1):
+        for step, (audio, video, contexts, fps) in enumerate(dataloader, 1):
             loss, grad_norm = training_step(
                 model, optimizer, audio, video, receptive_fields, rank, scaler,
             )
@@ -277,7 +277,8 @@ def train_model(
                     f"[epoch {epoch} | step {step}] "
                     f"batch_progress={prog}, "
                     f"minibatch_loss={loss:0.08f}, "
-                    f"minibatch_grad_norm={grad_norm:0.08f}"
+                    f"minibatch_grad_norm={grad_norm:0.08f}, "
+                    f"minibatch_filepaths={fps}"
                 )
                 writer.add_scalar("minibatch/progress/train", prog, total)
                 writer.add_scalar("minibatch/loss/train", mean_loss, total)

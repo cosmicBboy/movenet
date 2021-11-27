@@ -51,14 +51,6 @@ class Example:
     info: Info
 
 
-def load_video(video_file: str):
-    return Example(
-        "video",
-        video_file,
-        *torchvision.io.read_video(video_file, pts_unit="sec")
-    )
-
-
 class KineticsDataset(torch.utils.data.Dataset):
 
     def __init__(self, filepath: str, train=True):
