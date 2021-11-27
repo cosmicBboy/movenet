@@ -140,32 +140,42 @@ class Batch:
 
 def make_batch(input_channels: int, examples: List[Example]):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
-    audio, video, contexts, filepaths = [], [], [], []
-    for example in examples:
-        try:
-            # permute to: frames x channels x height x width
-            video.append(resize_video(example.video.permute(0, 3, 1, 2)))
-            audio.append(
-                one_hot_encode_audio(
-                    resample_audio(example.audio), input_channels
-                )
-            )
-            contexts.append(example.context)
-            filepaths.append(example.filepath)
-        except Exception as e:
-            print(
-                f"ERROR: {e} filepath - {example.filepath}, "
-                f"audio - {example.audio}, "
-                f"video - {example.video}, "
-                f"context - {example.context}"
-            )
 
-    if not audio or not video:
-        raise RuntimeError(
-            "No audio or video found in this batch: "
-            f"audio: {len(audio)}, video: {len(video)}"
-        )
-    return Batch(torch.stack(audio), torch.stack(video), contexts, filepaths)
+    example = examples[0]
+    audio = one_hot_encode_audio(resample_audio(example.audio), input_channels)
+    video = resize_video(example.video.permute(0, 3, 1, 2))
+    contexts = [example.context]
+    filepaths = [example.filepath]
+
+    if len(examples[1:]):
+        for example in examples[1:]:
+            try:
+                # permute to: frames x channels x height x width
+                video = torch.stack([
+                    video, resize_video(example.video.permute(0, 3, 1, 2))]
+                )
+                audio = torch.stack([
+                    audio,
+                    audio.append(
+                        one_hot_encode_audio(
+                            resample_audio(example.audio), input_channels
+                        )
+                    )
+                ])
+                contexts.append(example.context)
+                filepaths.append(example.filepath)
+            except Exception as e:
+                print(
+                    f"ERROR: {e} filepath - {example.filepath}, "
+                    f"audio - {example.audio}, "
+                    f"video - {example.video}, "
+                    f"context - {example.context}"
+                )
+    else:
+        audio = torch.stack([audio])
+        video = torch.stack([video])
+
+    return Batch(audio, video, contexts, filepaths)
 
 
 def resample_audio(
