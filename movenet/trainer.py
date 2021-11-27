@@ -136,6 +136,8 @@ def training_step(
     else:
         optimizer.step()
 
+    gc.collect()
+
     return loss, grad_norm
 
 
