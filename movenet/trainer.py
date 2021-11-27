@@ -102,16 +102,12 @@ class TrainingConfig:
 def training_step(
     model, optimizer, audio, video, receptive_fields, rank=0, scaler=None
 ):
-    with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
-        if torch.cuda.is_available():
-            audio, video = audio.to(rank), video.to(rank)
-        output = model(audio, video)
-        target = audio[:, :, receptive_fields:].argmax(1)
-        loss = F.cross_entropy(output, target)
-
-    del output
-    del audio
-    del video
+    # with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
+    if torch.cuda.is_available():
+        audio, video = audio.to(rank), video.to(rank)
+    output = model(audio, video)
+    target = audio[:, :, receptive_fields:].argmax(1)
+    loss = F.cross_entropy(output, target)
 
     optimizer.zero_grad(set_to_none=True)
 
@@ -150,10 +146,6 @@ def validation_step(model, audio, video, receptive_fields, rank=0):
         output = model(audio, video)
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
-
-    del output
-    del audio
-    del video
 
     return loss, output
 
@@ -257,7 +249,8 @@ def train_model(
         writer = SummaryWriter(config.tensorboard_dir)
 
 
-    scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
+    # scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
+    scaler = None
 
     from torch.profiler import profile, ProfilerActivity
 
@@ -278,8 +271,11 @@ def train_model(
                 loss, grad_norm = training_step(
                     model, optimizer, audio, video, receptive_fields, rank, scaler,
                 )
-                gc.collect()
                 train_loss += loss
+
+                del audio
+                del video
+                gc.collect()
 
                 prog = step / len(dataloader)
                 mean_loss = loss / config.batch_size

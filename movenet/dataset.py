@@ -51,9 +51,10 @@ class Example(NamedTuple):
 
 class KineticsDataset(torch.utils.data.Dataset):
 
-    def __init__(self, filepath: str, train=True):
+    def __init__(self, filepath: str, input_channels: int, train=True):
         self.filepath = Path(filepath)
         self.train = train
+        self.input_channels = input_channels
 
         # here we use the class label in the kinetics dataset as global
         # context
@@ -89,8 +90,16 @@ class KineticsDataset(torch.utils.data.Dataset):
         return Example(
             self.index[item].context,
             self.index[item].filepath,
-            *torchvision.io.read_video(self.index[item].filepath)
+            *read_video(self.index[item].filepath, self.input_channels),
         )
+
+
+def read_video(filepath, input_channels):
+    video, audio, info = torchvision.io.read_video(filepath)
+    # permute to: frames x channels x height x width
+    video = resize_video(video.permute(0, 3, 1, 2))
+    audio = one_hot_encode_audio(resample_audio(audio), input_channels)
+    return video, audio, info
 
 
 def get_dataloader(
@@ -102,7 +111,7 @@ def get_dataloader(
     world_size: int = 0,
     **kwargs,
 ):
-    dataset = KineticsDataset(filepath, train=train)
+    dataset = KineticsDataset(filepath, input_channels, train=train)
     sampler = None
     if world_size > 1:
         sampler = torch.utils.data.distributed.DistributedSampler(
@@ -116,7 +125,7 @@ def get_dataloader(
     return torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        collate_fn=partial(make_batch, input_channels),
+        collate_fn=make_batch,
         sampler=sampler,
         **kwargs
     )
@@ -138,44 +147,18 @@ class Batch:
         yield from (self.audio, self.video, self.contexts, self.filepaths)
 
 
-def make_batch(input_channels: int, examples: List[Example]):
+def make_batch(examples: List[Example]):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
 
-    example = examples[0]
-    audio = one_hot_encode_audio(resample_audio(example.audio), input_channels)
-    video = resize_video(example.video.permute(0, 3, 1, 2))
-    contexts = [example.context]
-    filepaths = [example.filepath]
+    audio, video, contexts, filepaths = [], [], [], []
 
-    if len(examples[1:]):
-        for example in examples[1:]:
-            try:
-                # permute to: frames x channels x height x width
-                video = torch.stack([
-                    video, resize_video(example.video.permute(0, 3, 1, 2))]
-                )
-                audio = torch.stack([
-                    audio,
-                    audio.append(
-                        one_hot_encode_audio(
-                            resample_audio(example.audio), input_channels
-                        )
-                    )
-                ])
-                contexts.append(example.context)
-                filepaths.append(example.filepath)
-            except Exception as e:
-                print(
-                    f"ERROR: {e} filepath - {example.filepath}, "
-                    f"audio - {example.audio}, "
-                    f"video - {example.video}, "
-                    f"context - {example.context}"
-                )
-    else:
-        audio = torch.stack([audio])
-        video = torch.stack([video])
+    for example in examples:
+        video.append(example.video)
+        audio.append(example.audio)
+        contexts.append(example.context)
+        filepaths.append(example.filepath)
 
-    return Batch(audio, video, contexts, filepaths)
+    return Batch(torch.stack(audio), torch.stack(video), contexts, filepaths)
 
 
 def resample_audio(
