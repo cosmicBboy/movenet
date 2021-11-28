@@ -256,7 +256,7 @@ def train_model(
     # scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
     scaler = None
 
-    from torch.profiler import profile, ProfilerActivity
+    # from torch.profiler import profile, ProfilerActivity
 
     for epoch in range(config.n_epochs):
 
@@ -266,59 +266,59 @@ def train_model(
         model.train()
         train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
-        with profile(
-            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-            profile_memory=True,
-            record_shapes=True,
-        ) as prof:
-            for step, (audio, video, contexts, fps) in enumerate(dataloader, 1):
-                loss, grad_norm = training_step(
-                    model, optimizer, audio, video, receptive_fields, rank, scaler,
+        # with profile(
+        #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        #     profile_memory=True,
+        #     record_shapes=True,
+        # ) as prof:
+        for step, (audio, video, contexts, fps) in enumerate(dataloader, 1):
+            loss, grad_norm = training_step(
+                model, optimizer, audio, video, receptive_fields, rank, scaler,
+            )
+            train_loss += loss
+
+            del audio
+            del video
+            gc.collect()
+
+            prog = step / len(dataloader)
+            mean_loss = loss / config.batch_size
+            total = epoch * len(dataloader) + step
+            if rank == 0:
+                batch_lr = optimizer.param_groups[0]["lr"]
+                logger.info(
+                    f"[epoch {epoch} | step {step}] "
+                    f"batch_progress={prog}, "
+                    f"minibatch_loss={loss:0.08f}, "
+                    f"minibatch_grad_norm={grad_norm:0.08f}, "
+                    f"minibatch_filepaths={fps}"
                 )
-                train_loss += loss
+                writer.add_scalar("minibatch/progress/train", prog, total)
+                writer.add_scalar("minibatch/loss/train", mean_loss, total)
+                writer.add_scalar("minibatch/grad_norm", grad_norm, total)
+                writer.add_scalar("minibatch/learning_rate", batch_lr, total)
 
-                del audio
-                del video
-                gc.collect()
+                # wandb.log(
+                #     {"minibatch/progress/train": prog, "train_step": total}
+                # )
+                # wandb.log(
+                #     {"minibatch/loss/train": mean_loss, "train_step": total}
+                # )
+                # wandb.log(
+                #     {"minibatch/grad_norm": grad_norm, "train_step": total}
+                # )
+                # wandb.log(
+                #     {"minibatch/learning_rate": batch_lr, "train_step": total}
+                # )
 
-                prog = step / len(dataloader)
-                mean_loss = loss / config.batch_size
-                total = epoch * len(dataloader) + step
-                if rank == 0:
-                    batch_lr = optimizer.param_groups[0]["lr"]
-                    logger.info(
-                        f"[epoch {epoch} | step {step}] "
-                        f"batch_progress={prog}, "
-                        f"minibatch_loss={loss:0.08f}, "
-                        f"minibatch_grad_norm={grad_norm:0.08f}, "
-                        f"minibatch_filepaths={fps}"
-                    )
-                    writer.add_scalar("minibatch/progress/train", prog, total)
-                    writer.add_scalar("minibatch/loss/train", mean_loss, total)
-                    writer.add_scalar("minibatch/grad_norm", grad_norm, total)
-                    writer.add_scalar("minibatch/learning_rate", batch_lr, total)
+            scheduler.step()
 
-                    # wandb.log(
-                    #     {"minibatch/progress/train": prog, "train_step": total}
-                    # )
-                    # wandb.log(
-                    #     {"minibatch/loss/train": mean_loss, "train_step": total}
-                    # )
-                    # wandb.log(
-                    #     {"minibatch/grad_norm": grad_norm, "train_step": total}
-                    # )
-                    # wandb.log(
-                    #     {"minibatch/learning_rate": batch_lr, "train_step": total}
-                    # )
-                
-                scheduler.step()
+            if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
+                break
 
-                if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
-                    break
-
-        print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=20))
-        print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=20))
-        print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=2))
+        # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=20))
+        # print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=20))
+        # print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=2))
 
         val_loss = 0.0
         sample_output = None

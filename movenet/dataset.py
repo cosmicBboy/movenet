@@ -22,15 +22,15 @@ from torchvision.transforms.functional import rgb_to_grayscale
 from torchaudio.functional import mu_law_encoding
 from torchtyping import TensorType
 
+from movenet.wavenet import (
+    MAX_AUDIO_FRAMES, MAX_VIDEO_FRAMES, VIDEO_KERNEL_SIZE,
+)
+
 logger = logging.getLogger(__file__)
 
 
 AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
-
-MAX_AUDIO_FRAMES = 400000
-MAX_VIDEO_FRAMES = 300
-VIDEO_KERNEL_SIZE = (1, 10, 10)
 
 
 Info = TypedDict("info", video_fps=float, audio_fps=float)

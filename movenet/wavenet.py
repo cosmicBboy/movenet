@@ -15,11 +15,26 @@ AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
 MAX_AUDIO_FRAMES = 400000
-MAX_VIDEO_FRAMES = 300
+MAX_VIDEO_FRAMES = 400
 VIDEO_KERNEL_SIZE = (1, 10, 10)
 
-UPSAMPLE_KERNEL_SIZES = [(9701, ), (40, )]
-UPSAMPLE_STRIDES = [1, 40]
+UPSAMPLE_STRIDE = 10
+
+
+def upsample_kernel_size_solver(
+    in_size, out_size, stride=1, padding=0, output_padding=0, dilation=1,
+):
+    """
+    Returns kernel size needed to upsample a tensor of some input size to
+    a desired output size.
+
+    The implementation solves for kernel size in the equation described the
+    the "Shape" section of the pytorch docs:
+    https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose1d.html
+    """
+    x = out_size - 1 - output_padding - (in_size - 1) * stride + 2 * padding
+    x = int(x / dilation + 1)
+    return (x, )
 
 
 class WaveNet(nn.Module):
@@ -69,15 +84,25 @@ class WaveNet(nn.Module):
             out_channels=residual_channels,
             kernel_size=VIDEO_KERNEL_SIZE,
         )
-        # perform two layers of conv transpose
+
+        # compute a sequence of kernel sizes for iteratively upsampling the
+        # video frames
+        upsample_sizes = np.geomspace(
+            MAX_VIDEO_FRAMES,
+            MAX_AUDIO_FRAMES,
+            num=int(np.log10(MAX_AUDIO_FRAMES / MAX_VIDEO_FRAMES) + 1)
+        ).astype(int)
+
         self.video_transpose = nn.Sequential(*[
             nn.ConvTranspose1d(
                 in_channels=residual_channels,
                 out_channels=residual_channels,
-                kernel_size=k,
-                stride=s,
+                kernel_size=upsample_kernel_size_solver(
+                    in_size, out_size, stride=UPSAMPLE_STRIDE
+                ),
+                stride=UPSAMPLE_STRIDE,
             )
-            for k, s in zip(UPSAMPLE_KERNEL_SIZES, UPSAMPLE_STRIDES)
+            for in_size, out_size in zip(upsample_sizes[:-1], upsample_sizes[1:])
         ])
         self.causal_conv = CausalConv1d(input_channels, residual_channels)
         self.residual_conv_stack = ResidualConvStack(
@@ -105,7 +130,9 @@ class WaveNet(nn.Module):
         # convolve video signal to be of dim (batch x channels x frames)
         video_encoding = self.video_conv(video).squeeze(-1).squeeze(-1)
         # upsample video to match the number of frames in the audio sample.
-        return self.video_transpose(video_encoding)
+        video_transposed = self.video_transpose(video_encoding)
+        assert video_transposed.shape[-1] == MAX_AUDIO_FRAMES
+        return video_transposed
 
     def forward(
         self,
