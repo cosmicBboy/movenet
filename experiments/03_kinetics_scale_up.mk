@@ -1,4 +1,4 @@
-N_DEBUG_EPOCHS?=10
+N_DEBUG_EPOCHS?=3
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
@@ -57,7 +57,7 @@ N_EPOCHS?=3
 
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
-	--batch_size 3 \
+	--batch_size 5 \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
 	--residual_channels 16 \
@@ -76,9 +76,9 @@ DATASET_OPTS?=--datastore_name kinetics-breakdancing \
 .PHONY: train-gpu
 train-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--instance_type p3.16xlarge \
+		--cpus 60  \
+		--gpus 8 \
 		--ignore_warnings \
 		${INFRA_OPTS} \
 		${DATASET_OPTS} \
