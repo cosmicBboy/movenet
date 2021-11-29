@@ -124,7 +124,6 @@ def training_step(
         if param.grad is not None:
             grad_norm += param.grad.detach().norm(2).cpu().item() ** 2
     grad_norm = grad_norm ** 0.5
-    loss = loss.detach().cpu().item()
 
     if scaler:
         scaler.step(optimizer)
@@ -132,7 +131,7 @@ def training_step(
     else:
         optimizer.step()
 
-    return loss, grad_norm
+    return loss.detach().cpu().item(), grad_norm
 
 
 @torch.no_grad()
