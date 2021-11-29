@@ -109,10 +109,6 @@ def training_step(
         target = audio[:, :, receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
 
-    del audio
-    del video
-    del target
-
     optimizer.zero_grad(set_to_none=True)
 
     if scaler:
@@ -275,10 +271,6 @@ def train_model(
                 model, optimizer, audio, video, receptive_fields, rank, scaler,
             )
             train_loss += loss
-
-            del audio
-            del video
-            gc.collect()
 
             prog = step / len(dataloader)
             mean_loss = loss / config.batch_size
