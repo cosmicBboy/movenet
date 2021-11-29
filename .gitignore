@@ -1,4 +1,5 @@
 # project-specific
+.dvc
 .vscode
 kinetics-downloader
 datasets/*
