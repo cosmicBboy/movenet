@@ -2,12 +2,12 @@ N_DEBUG_EPOCHS?=10
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
-	--batch_size 4 \
+	--batch_size 6 \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
 	--residual_channels 16 \
 	--layer_size 1 \
-	--stack_size 3 \
+	--stack_size 1 \
 	--checkpoint_every 1
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
@@ -47,7 +47,7 @@ train-debug-gpu:
 		--gpus 4 \
 		--ignore_warnings \
 		${INFRA_DEBUG_OPTS} \
-		${DATASET_DEBUG_OPTS} \
+		${DATASET_GPU_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}
