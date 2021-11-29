@@ -42,12 +42,12 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.16xlarge \
-		--cpus 60  \
-		--gpus 8 \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
 		--ignore_warnings \
-		${INFRA_INFRA_DEBUG_OPTS} \
-		${DATASET_GPU_DEBUG_OPTS} \
+		${INFRA_DEBUG_OPTS} \
+		${DATASET_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}

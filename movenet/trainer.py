@@ -253,8 +253,7 @@ def train_model(
         writer = SummaryWriter(config.tensorboard_dir)
 
 
-    # scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
-    scaler = None
+    scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
 
     # from torch.profiler import profile, ProfilerActivity
 
@@ -298,18 +297,18 @@ def train_model(
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
                 writer.add_scalar("minibatch/learning_rate", batch_lr, total)
 
-                # wandb.log(
-                #     {"minibatch/progress/train": prog, "train_step": total}
-                # )
-                # wandb.log(
-                #     {"minibatch/loss/train": mean_loss, "train_step": total}
-                # )
-                # wandb.log(
-                #     {"minibatch/grad_norm": grad_norm, "train_step": total}
-                # )
-                # wandb.log(
-                #     {"minibatch/learning_rate": batch_lr, "train_step": total}
-                # )
+                wandb.log(
+                    {"minibatch/progress/train": prog, "train_step": total}
+                )
+                wandb.log(
+                    {"minibatch/loss/train": mean_loss, "train_step": total}
+                )
+                wandb.log(
+                    {"minibatch/grad_norm": grad_norm, "train_step": total}
+                )
+                wandb.log(
+                    {"minibatch/learning_rate": batch_lr, "train_step": total}
+                )
 
             scheduler.step()
 
@@ -348,10 +347,10 @@ def train_model(
                 writer.add_scalar("minibatch/progress/val", prog, total)
                 writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
 
-                # wandb.log({"minibatch/progress/val": prog, "val_step": total})
-                # wandb.log(
-                #     {"minibatch/loss/val": mean_val_loss, "val_step": total}
-                # )
+                wandb.log({"minibatch/progress/val": prog, "val_step": total})
+                wandb.log(
+                    {"minibatch/loss/val": mean_val_loss, "val_step": total}
+                )
             if rank == 0 and step == sample_batch_number:
                 sample_output = output
                 if torch.cuda.is_available():
@@ -374,9 +373,9 @@ def train_model(
             writer.add_scalar("loss/val", val_loss, epoch)
             writer.add_scalar("learning_rate", learning_rate, epoch)
 
-            # wandb.log({"loss/train": train_loss, "epoch": epoch})
-            # wandb.log({"loss/val": val_loss, "epoch": epoch})
-            # wandb.log({"learning_rate": learning_rate, "epoch": epoch})
+            wandb.log({"loss/train": train_loss, "epoch": epoch})
+            wandb.log({"loss/val": val_loss, "epoch": epoch})
+            wandb.log({"learning_rate": learning_rate, "epoch": epoch})
 
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
@@ -444,13 +443,13 @@ def dist_train_model(
     dist.init_process_group(
         config.dist_backend, rank=rank, world_size=world_size
     )
-    # if rank == 0:
-        # wandb_setup()
-        # wandb.config.update(json.loads(config.to_json()))
+    if rank == 0:
+        wandb_setup()
+        wandb.config.update(json.loads(config.to_json()))
 
     model = train_model(config, dataset_fp, rank=rank, world_size=world_size)
     if rank == 0:
-        # wandb.finish()
+        wandb.finish()
         torch.save(
             model.module.cuda(rank).state_dict(),
             config.model_output_path / "model.pth"
@@ -573,6 +572,6 @@ if __name__ == "__main__":
         )
     else:
         # initialize wandb
-        # wandb_setup()
+        wandb_setup()
         model = train_model(config, args.dataset)
         torch.save(model.state_dict(), args.model_output_path / "model.pth")
