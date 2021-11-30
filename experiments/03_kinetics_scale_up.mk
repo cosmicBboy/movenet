@@ -2,7 +2,7 @@ N_DEBUG_EPOCHS?=3
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
-	--batch_size 8 \
+	--batch_size 5 \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
 	--residual_channels 16 \

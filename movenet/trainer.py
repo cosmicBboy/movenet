@@ -249,10 +249,7 @@ def train_model(
     if rank == 0:
         writer = SummaryWriter(config.tensorboard_dir)
 
-
     scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
-
-    # from torch.profiler import profile, ProfilerActivity
 
     for epoch in range(config.n_epochs):
 
@@ -262,11 +259,6 @@ def train_model(
         model.train()
         train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
-        # with profile(
-        #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-        #     profile_memory=True,
-        #     record_shapes=True,
-        # ) as prof:
         for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
             loss, grad_norm = training_step(
                 model, optimizer, audio, video, receptive_fields, rank, scaler,
@@ -290,27 +282,18 @@ def train_model(
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
                 writer.add_scalar("minibatch/learning_rate", batch_lr, total)
 
-                wandb.log(
-                    {"minibatch/progress/train": prog, "train_step": total}
-                )
-                wandb.log(
-                    {"minibatch/loss/train": mean_loss, "train_step": total}
-                )
-                wandb.log(
-                    {"minibatch/grad_norm": grad_norm, "train_step": total}
-                )
-                wandb.log(
-                    {"minibatch/learning_rate": batch_lr, "train_step": total}
-                )
+                wandb.log({
+                    "minibatch/progress/train": prog,
+                    "minibatch/loss/train": mean_loss,
+                    "minibatch/grad_norm": grad_norm,
+                    "minibatch/learning_rate": batch_lr,
+                    "train_step": total,
+                })
 
             scheduler.step()
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
-
-        # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=20))
-        # print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=20))
-        # print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=2))
 
         val_loss = 0.0
         sample_output = None
@@ -339,11 +322,11 @@ def train_model(
                 )
                 writer.add_scalar("minibatch/progress/val", prog, total)
                 writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
+                wandb.log({
+                    "minibatch/progress/val": prog, "val_step": total,
+                    "minibatch/loss/val": mean_val_loss,
+                })
 
-                wandb.log({"minibatch/progress/val": prog, "val_step": total})
-                wandb.log(
-                    {"minibatch/loss/val": mean_val_loss, "val_step": total}
-                )
             if rank == 0 and step == sample_batch_number:
                 sample_output = output
                 sample_fps = fps
@@ -365,9 +348,15 @@ def train_model(
             writer.add_scalar("loss/val", val_loss, epoch)
             writer.add_scalar("learning_rate", learning_rate, epoch)
 
-            wandb.log({"loss/train": train_loss, "epoch": epoch})
-            wandb.log({"loss/val": val_loss, "epoch": epoch})
-            wandb.log({"learning_rate": learning_rate, "epoch": epoch})
+            wandb.log(
+                {
+                    "loss/train": train_loss,
+                    "loss/val": val_loss,
+                    "learning_rate": learning_rate,
+                    "epoch": epoch,
+                },
+                commit=not (epoch % config.checkpoint_every == 0)
+            )
 
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
@@ -390,6 +379,11 @@ def train_model(
             ).to("cpu")
 
             torch.save(output_samples, fp / "output_samples.pth")
+
+            checkpoint_samples = wandb.Table(
+                columns=["epoch", "id", "video", "orig_audio", "synth_audio"]
+            )
+
             for i, (sample_fp, info, sample) in enumerate(
                 zip(sample_fps, sample_info, output_samples)
             ):
@@ -426,22 +420,17 @@ def train_model(
                 )
                 # log on wandb
                 caption = f"instance id: {sample_fp.stem}"
-                wandb.log({
-                    "generated_audio": wandb.Audio(
-                        synth_audio_fp, caption=caption,
-                    ),
-                    "epoch": epoch,
-                })
-                wandb.log({
-                    "original_audio": wandb.Audio(
-                        orig_audio_fp, caption=caption,
-                    ),
-                    "epoch": epoch,
-                })
-                wandb.log({
-                    "original_video": wandb.Video(video_fp, caption=caption),
-                    "epoch": epoch,
-                })
+                checkpoint_samples.add_data(
+                    epoch,
+                    sample_fp.stem,
+                    wandb.Video(video_fp, caption=caption),
+                    wandb.Audio(orig_audio_fp, caption=caption),
+                    wandb.Audio(synth_audio_fp, caption=caption),
+                )
+
+            wandb.run.log(
+                {"checkpoint_samples": checkpoint_samples}, commit=True,
+            )
 
         if distributed:
             dist.barrier()
