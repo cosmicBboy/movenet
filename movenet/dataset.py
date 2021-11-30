@@ -13,6 +13,7 @@ try:
 except:
     from typing_extensions import TypedDict
 
+import librosa
 import torch
 import torchaudio
 import torchaudio.functional
@@ -33,7 +34,13 @@ AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
 
-Info = TypedDict("info", video_fps=float, audio_fps=float)
+Info = TypedDict(
+    "info",
+    video_fps=float,
+    audio_fps=float,
+    video_orig_dim=float,
+    audio_orig_dim=float,
+)
 
 
 class RawMetadata(NamedTuple):
@@ -97,6 +104,10 @@ class KineticsDataset(torch.utils.data.Dataset):
 def read_video(filepath, input_channels):
     video, audio, info = torchvision.io.read_video(filepath)
     # permute to: frames x channels x height x width
+    info.update({
+        "video_orig_dim": video.shape[0],
+        "audio_orig_dim": audio.shape[1],
+    })
     video = resize_video(video.permute(0, 3, 1, 2))
     audio = one_hot_encode_audio(resample_audio(audio), input_channels)
     return video, audio, info
@@ -132,11 +143,12 @@ def get_dataloader(
 
 
 class Batch:
-    def __init__(self, audio, video, contexts, filepaths):
+    def __init__(self, audio, video, contexts, filepaths, info):
         self.audio = audio
         self.video = video
         self.contexts = contexts
         self.filepaths = filepaths
+        self.info = info
 
     def pin_memory(self):
         self.audio = self.audio.pin_memory()
@@ -144,30 +156,36 @@ class Batch:
         return self
 
     def __iter__(self):
-        yield from (self.audio, self.video, self.contexts, self.filepaths)
+        yield from (
+            self.audio, self.video, self.contexts, self.filepaths, self.info
+        )
 
 
 def make_batch(examples: List[Example]):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
 
-    audio, video, contexts, filepaths = [], [], [], []
+    audio, video, contexts, filepaths, info = [], [], [], [], []
 
     for example in examples:
         video.append(example.video)
         audio.append(example.audio)
         contexts.append(example.context)
         filepaths.append(example.filepath)
+        info.append(example.info)
 
-    return Batch(torch.stack(audio), torch.stack(video), contexts, filepaths)
+    return Batch(
+        torch.stack(audio), torch.stack(video), contexts, filepaths, info
+    )
 
 
 def resample_audio(
     audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
 ) -> TensorType["channels", "frames"]:
     x = audio.mean(dim=0)
-    resampled_audio = torchaudio.functional.resample(
-        x, x.shape[0], freq
+    resampled_audio = librosa.resample(
+        x.numpy(), x.shape[0], freq
     ).reshape(1, -1)
+    resampled_audio = torch.from_numpy(resampled_audio)
     if resampled_audio.shape[1] > freq:
         resampled_audio = resampled_audio[:, :freq]
     return resampled_audio

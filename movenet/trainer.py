@@ -10,6 +10,7 @@ from dataclasses_json import dataclass_json, config
 from pathlib import Path
 from typing import Optional
 
+import librosa
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
@@ -265,7 +266,7 @@ def train_model(
         #     profile_memory=True,
         #     record_shapes=True,
         # ) as prof:
-        for step, (audio, video, contexts, fps) in enumerate(dataloader, 1):
+        for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
             loss, grad_norm = training_step(
                 model, optimizer, audio, video, receptive_fields, rank, scaler,
             )
@@ -315,7 +316,7 @@ def train_model(
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
 
-        for step, (audio, video, contexts, fps) in enumerate(
+        for step, (audio, video, contexts, fps, info) in enumerate(
             valid_dataloader, 1
         ):
             _val_loss, output = validation_step(
@@ -343,10 +344,7 @@ def train_model(
                     {"minibatch/loss/val": mean_val_loss, "val_step": total}
                 )
             if rank == 0 and step == sample_batch_number:
-                sample_output = output
-                if torch.cuda.is_available():
-                    sample_output = sample_output.to(rank)
-                sample_fps = fps
+                sample_output, sample_fps, sample_info = output, fps, info
 
         if rank == 0:
             learning_rate = optimizer.param_groups[0]["lr"]
@@ -389,20 +387,28 @@ def train_model(
             ).to("cpu")
 
             torch.save(output_samples, fp / "output_samples.pth")
-            for i, (sample_fp, sample) in enumerate(
-                zip(sample_fps, output_samples)
+            for i, (sample_fp, info, sample) in enumerate(
+                zip(sample_fps, sample_info, output_samples)
             ):
                 sample_fp = Path(sample_fp)
                 # save original video files
                 shutil.copyfile(
                     sample_fp, fp / f"original_video_{i}_{sample_fp.stem}.mp4"
                 )
+                # upsample audio to the original dimensionality
+                resampled = torch.from_numpy(
+                    librosa.resample(
+                        sample.numpy(),
+                        sample.shape[0],
+                        info["audio_orig_dim"],
+                    )
+                )
                 # save generated mp3 file
                 torchaudio.save(
-                    str(fp / f"generated_autio_{i}_{sample_fp.stem}.mp3"),
+                    str(fp / f"generated_audio_{i}_{sample_fp.stem}.mp3"),
                     # mp3 requires 2 channels (left, right)
-                    torch.stack([sample, sample]),
-                    sample_rate=sample.shape[0],
+                    torch.stack([resampled, resampled]),
+                    sample_rate=info["audio_orig_dim"],
                 )
 
         if distributed:

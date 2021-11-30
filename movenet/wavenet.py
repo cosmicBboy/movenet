@@ -14,9 +14,9 @@ from movenet.modules import (
 AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
-MAX_AUDIO_FRAMES = 100000
-MAX_VIDEO_FRAMES = 100
-VIDEO_KERNEL_SIZE = (1, 5, 5)
+MAX_AUDIO_FRAMES = 400000
+MAX_VIDEO_FRAMES = 400
+VIDEO_KERNEL_SIZE = (1, 10, 10)
 
 UPSAMPLE_STRIDE = 10
 
