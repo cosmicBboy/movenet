@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from torch.nn.parallel.distributed import DistributedDataParallel
 import torch.optim
 import torchaudio
+import torchvision.io
 import wandb
 from torch import distributed as dist
 from torch.utils.tensorboard import SummaryWriter
@@ -344,7 +345,9 @@ def train_model(
                     {"minibatch/loss/val": mean_val_loss, "val_step": total}
                 )
             if rank == 0 and step == sample_batch_number:
-                sample_output, sample_fps, sample_info = output, fps, info
+                sample_output = output
+                sample_fps = fps
+                sample_info = info
 
         if rank == 0:
             learning_rate = optimizer.param_groups[0]["lr"]
@@ -392,9 +395,11 @@ def train_model(
             ):
                 sample_fp = Path(sample_fp)
                 # save original video files
-                shutil.copyfile(
-                    sample_fp, fp / f"original_video_{i}_{sample_fp.stem}.mp4"
+                video_fp = str(fp / f"original_video_{i}_{sample_fp.stem}.mp4")
+                _, orig_audio, _ = torchvision.io.read_video(
+                    str(sample_fp)
                 )
+                shutil.copyfile(sample_fp, video_fp)
                 # upsample audio to the original dimensionality
                 resampled = torch.from_numpy(
                     librosa.resample(
@@ -403,13 +408,40 @@ def train_model(
                         info["audio_orig_dim"],
                     )
                 )
+                resampled = torch.stack([resampled, resampled])
                 # save generated mp3 file
+                synth_audio_fp = str(fp / f"synth_audio_{sample_fp.stem}.wav")
+                orig_audio_fp = str(fp / f"orig_audio_{sample_fp.stem}.wav")
                 torchaudio.save(
-                    str(fp / f"generated_audio_{i}_{sample_fp.stem}.mp3"),
-                    # mp3 requires 2 channels (left, right)
-                    torch.stack([resampled, resampled]),
-                    sample_rate=info["audio_orig_dim"],
+                    synth_audio_fp,
+                    resampled,
+                    sample_rate=info["audio_fps"],
+                    format="wav",
                 )
+                torchaudio.save(
+                    orig_audio_fp,
+                    orig_audio,
+                    sample_rate=info["audio_fps"],
+                    format="wav",
+                )
+                # log on wandb
+                caption = f"instance id: {sample_fp.stem}"
+                wandb.log({
+                    "generated_audio": wandb.Audio(
+                        synth_audio_fp, caption=caption,
+                    ),
+                    "epoch": epoch,
+                })
+                wandb.log({
+                    "original_audio": wandb.Audio(
+                        orig_audio_fp, caption=caption,
+                    ),
+                    "epoch": epoch,
+                })
+                wandb.log({
+                    "original_video": wandb.Video(video_fp, caption=caption),
+                    "epoch": epoch,
+                })
 
         if distributed:
             dist.barrier()
