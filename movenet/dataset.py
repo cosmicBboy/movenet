@@ -207,6 +207,7 @@ def one_hot_encode_audio(audio, input_channels):
     # need to figure out a more principled way of combining two audio
     # (left/right) channels into one
     # https://stackoverflow.com/questions/37313320/how-to-convert-two-channel-audio-into-one-channel-audio
+    audio = normalize_audio(audio)
     quantized = mu_law_encoding(audio, input_channels)
     one_hot_enc = (
         torch.zeros(input_channels, quantized.size(1))
