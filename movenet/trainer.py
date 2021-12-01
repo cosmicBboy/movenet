@@ -161,7 +161,7 @@ def validation_step(model, audio, video, rank=0):
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
 
-    return loss, output
+    return loss.detach().cpu().item(), output
 
 
 def train_model(
@@ -205,7 +205,6 @@ def train_model(
 
     distributed = False
     model = WaveNet(**asdict(config.model_config))
-    receptive_fields = model.receptive_fields
 
     if torch.cuda.is_available():
         if world_size > 1:
@@ -216,6 +215,7 @@ def train_model(
                 device_ids=[rank],
                 find_unused_parameters=True,
             )
+            model.receptive_fields = model.module.receptive_fields
         else:
             logger.info("Training on gpu")
             model = model.cuda(rank)
@@ -326,10 +326,7 @@ def train_model(
         for step, (audio, video, contexts, fps, info) in enumerate(
             valid_dataloader, 1
         ):
-            _val_loss, output = validation_step(
-                model, audio, video, receptive_fields, rank
-            )
-            _val_loss = _val_loss.detach().cpu().item()
+            _val_loss, output = validation_step(model, audio, video, rank)
             # wait for all processes to complete the validation step
             if distributed:
                 dist.barrier()
