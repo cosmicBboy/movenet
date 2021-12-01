@@ -509,6 +509,7 @@ if __name__ == "__main__":
     parser.add_argument("--layer_size", type=int, default=3)
     parser.add_argument("--stack_size", type=int, default=3)
     parser.add_argument("--dist_backend", type=str, default="nccl")
+    parser.add_argument("--dist_port", type=str, default="8888")
     parser.add_argument(
         "--pretrained_model_path",
         type=lambda x: None if x is None or x == "" else Path(x),
