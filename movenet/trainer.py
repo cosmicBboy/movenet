@@ -77,6 +77,7 @@ class TrainingConfig:
     optimizer: str = "AdamW"
     scheduler: str = "OneCycleLR"
     learning_rate: float = 0.0002
+    accumulation_steps: int = 1
     num_workers: int = 0
     pin_memory: bool = False
 
@@ -105,16 +106,23 @@ class TrainingConfig:
 
 
 def training_step(
-    model, optimizer, audio, video, receptive_fields, rank=0, scaler=None
+    config: TrainingConfig,
+    step,
+    model,
+    optimizer,
+    audio,
+    video,
+    rank=0,
+    scaler=None,
+    last_step=False,
 ):
     with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
         if torch.cuda.is_available():
             audio, video = audio.cuda(rank), video.cuda(rank)
         output = model(audio, video)
-        target = audio[:, :, receptive_fields:].argmax(1)
+        target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
-
-    optimizer.zero_grad(set_to_none=True)
+        loss /= config.accumulation_steps
 
     if scaler:
         scaler.scale(loss).backward()
@@ -130,17 +138,19 @@ def training_step(
             grad_norm += param.grad.detach().norm(2).cpu().item() ** 2
     grad_norm = grad_norm ** 0.5
 
-    if scaler:
-        scaler.step(optimizer)
-        scaler.update()
-    else:
-        optimizer.step()
+    if step % config.accumulation_steps == 0 or last_step:
+        if scaler:
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
 
-    return loss.detach().cpu().item(), grad_norm
+    return loss, grad_norm
 
 
 @torch.no_grad()
-def validation_step(model, audio, video, receptive_fields, rank=0):
+def validation_step(model, audio, video, rank=0):
     # TODO: make sure this is only using video to generate audio
     # - need to figure out how to auto-regressively feed in the audio output to
     #   generate full audio sequence
@@ -148,7 +158,7 @@ def validation_step(model, audio, video, receptive_fields, rank=0):
         if torch.cuda.is_available():
             audio, video = audio.cuda(rank), video.cuda(rank)
         output = model(audio, video)
-        target = audio[:, :, receptive_fields:].argmax(1)
+        target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
 
     return loss, output
@@ -267,15 +277,21 @@ def train_model(
         train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
         for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
+            last_step = step == len(dataloader)
             loss, grad_norm = training_step(
-                model, optimizer, audio, video, receptive_fields, rank, scaler,
+                config, step, model, optimizer, audio, video, rank, scaler,
+                last_step=last_step
             )
+            loss = loss.detach().cpu().item()
             train_loss += loss
 
             prog = step / len(dataloader)
-            mean_loss = loss / config.batch_size
+            mean_loss = loss / step
             total = epoch * len(dataloader) + step
-            if rank == 0:
+            if (
+                rank == 0
+                and (step % config.accumulation_steps == 0 or last_step)
+            ):
                 batch_lr = optimizer.param_groups[0]["lr"]
                 logger.info(
                     f"[epoch {epoch} | step {step}] "
@@ -297,7 +313,7 @@ def train_model(
                     "train_step": total,
                 })
 
-            scheduler.step()
+                scheduler.step()
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -313,12 +329,13 @@ def train_model(
             _val_loss, output = validation_step(
                 model, audio, video, receptive_fields, rank
             )
+            _val_loss = _val_loss.detach().cpu().item()
             # wait for all processes to complete the validation step
             if distributed:
                 dist.barrier()
 
             val_loss += _val_loss
-            mean_val_loss = val_loss / config.batch_size
+            mean_val_loss = val_loss / step
             prog = step / len(valid_dataloader)
             total = epoch * len(valid_dataloader) + step
             if rank == 0:
@@ -499,6 +516,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
+    parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--pin_memory", type=lambda x: bool(int(x)), default=False)
     parser.add_argument("--n_epochs", type=int, default=10)
@@ -571,6 +589,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
+        accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         n_epochs=args.n_epochs,
@@ -590,7 +609,11 @@ if __name__ == "__main__":
 
     logger.info(f"config: {config}")
 
-    world_size = torch.cuda.device_count()
+    world_size = torch.cuda.device_count() if torch.cuda.is_available() else 1
+    logging.info(
+        "Effective batch size: "
+        f"{config.batch_size * world_size * config.accumulation_steps}"
+    )
     if world_size > 1:
         logging.info(
             f"Launching distributed training job with world_size: {world_size}"

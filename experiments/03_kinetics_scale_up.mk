@@ -62,9 +62,9 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--pin_memory 1 \
 	--num_workers 16 \
 	--input_channels 128 \
-	--residual_channels 16 \
-	--layer_size 1 \
-	--stack_size 1 \
+	--residual_channels 32 \
+	--layer_size 2 \
+	--stack_size 2 \
 	--checkpoint_every 1
 
 INFRA_OPTS?=--scratch_size 512 \
