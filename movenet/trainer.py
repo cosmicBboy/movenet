@@ -77,6 +77,8 @@ class TrainingConfig:
     optimizer: str = "AdamW"
     scheduler: str = "OneCycleLR"
     learning_rate: float = 0.0002
+    num_workers: int = 0
+    pin_memory: bool = False
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
@@ -86,6 +88,7 @@ class TrainingConfig:
     n_epochs: int = 100
     n_steps_per_epoch: Optional[int] = None
     dist_backend: str = None
+    dist_port: str = "8888"
     pretrained_model_path: Optional[Path] = field(
         default=None,
         metadata=config(
@@ -165,6 +168,8 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=True,
+        pin_memory=config.pin_memory,
+        num_workers=config.num_workers,
     )
 
     valid_dataloader = dataset.get_dataloader(
@@ -175,6 +180,8 @@ def train_model(
         rank=rank,
         world_size=world_size,
         shuffle=False,
+        pin_memory=config.pin_memory,
+        num_workers=config.num_workers,
     )
 
     # sample one batch to save for inspecting predictions, make sure it's
@@ -457,7 +464,7 @@ def dist_train_model(
     configure_logging()
 
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "8888"
+    os.environ["MASTER_PORT"] = config.dist_port
     dist.init_process_group(
         config.dist_backend, rank=rank, world_size=world_size
     )
@@ -492,6 +499,8 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.0003)
+    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--pin_memory", type=lambda x: bool(int(x)), default=False)
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_steps_per_epoch", type=int, default=None)
     parser.add_argument("--checkpoint_every", type=int, default=1)
@@ -561,9 +570,12 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
         dist_backend=args.dist_backend,
+        dist_port=args.dist_port,
         pretrained_model_path=(
             args.pretrained_model_path
             if args.pretrained_model_path and args.pretrained_run_exp_name
