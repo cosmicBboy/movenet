@@ -61,8 +61,8 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
 	--residual_channels 16 \
-	--layer_size 2 \
-	--stack_size 2 \
+	--layer_size 1 \
+	--stack_size 1 \
 	--checkpoint_every 1
 
 INFRA_OPTS?=--scratch_size 512 \
