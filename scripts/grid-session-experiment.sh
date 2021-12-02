@@ -4,11 +4,11 @@
 
 python movenet/trainer.py \
 --dataset /datastores/kinetics-breakdancing \
---n_epochs 2 \
+--n_epochs 4 \
 --batch_size 3 \
 --learning_rate 0.00003 \
 --pin_memory 1 \
---num_workers 16 \
+--num_workers 6 \
 --input_channels 128 \
 --residual_channels 32 \
 --layer_size 2 \

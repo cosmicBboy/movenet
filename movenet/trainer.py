@@ -2,6 +2,7 @@
 
 import json
 import gc
+import math
 import logging
 import os
 import shutil
@@ -110,6 +111,7 @@ def training_step(
     step,
     model,
     optimizer,
+    scheduler,
     audio,
     video,
     rank=0,
@@ -126,7 +128,6 @@ def training_step(
 
     if scaler:
         scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)
     else:
         loss.backward()
 
@@ -144,9 +145,10 @@ def training_step(
             scaler.update()
         else:
             optimizer.step()
+        scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
-    return loss, grad_norm
+    return loss.detach().cpu().item(), grad_norm
 
 
 @torch.no_grad()
@@ -161,7 +163,7 @@ def validation_step(model, audio, video, rank=0):
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
 
-    return loss.detach().cpu().item(), output
+    return loss, output
 
 
 def train_model(
@@ -232,8 +234,6 @@ def train_model(
         if issubclass(type(pretrained_model), nn.Module):
             logger.info("pretrained model is an nn.Module")
             state_dict = pretrained_model.state_dict()
-            
-            model.load_state_dict(state_dict)
         else:
             logger.info(f"Pretrained model is a state dict.")
             state_dict = pretrained_model
@@ -258,7 +258,7 @@ def train_model(
         optimizer,
         max_lr=config.max_learning_rate,
         epochs=config.n_epochs,
-        steps_per_epoch=len(dataloader),
+        steps_per_epoch=math.ceil(len(dataloader) / config.accumulation_steps),
         three_phase=True,
     )
 
@@ -275,18 +275,18 @@ def train_model(
 
         model.train()
         train_loss = 0.0
+        batch_train_loss = 0.0
         logger.info(f"starting training loop for epoch {epoch}")
         for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
             last_step = step == len(dataloader)
             loss, grad_norm = training_step(
-                config, step, model, optimizer, audio, video, rank, scaler,
-                last_step=last_step
+                config, step, model, optimizer, scheduler,
+                audio, video, rank, scaler, last_step=last_step
             )
-            loss = loss.detach().cpu().item()
             train_loss += loss
+            batch_train_loss += loss
 
             prog = step / len(dataloader)
-            mean_loss = loss / step
             total = epoch * len(dataloader) + step
             if (
                 rank == 0
@@ -296,24 +296,23 @@ def train_model(
                 logger.info(
                     f"[epoch {epoch} | step {step}] "
                     f"batch_progress={prog}, "
-                    f"minibatch_loss={loss:0.08f}, "
+                    f"minibatch_loss={batch_train_loss:0.08f}, "
                     f"minibatch_grad_norm={grad_norm:0.08f}, "
                     f"minibatch_filepaths={fps}"
                 )
                 writer.add_scalar("minibatch/progress/train", prog, total)
-                writer.add_scalar("minibatch/loss/train", mean_loss, total)
+                writer.add_scalar("minibatch/loss/train", batch_train_loss, total)
                 writer.add_scalar("minibatch/grad_norm", grad_norm, total)
                 writer.add_scalar("minibatch/learning_rate", batch_lr, total)
 
                 wandb.log({
                     "minibatch/progress/train": prog,
-                    "minibatch/loss/train": mean_loss,
+                    "minibatch/loss/train": batch_train_loss,
                     "minibatch/grad_norm": grad_norm,
                     "minibatch/learning_rate": batch_lr,
                     "train_step": total,
                 })
-
-                scheduler.step()
+                batch_train_loss = 0.0
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -323,6 +322,7 @@ def train_model(
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
 
+        model.eval()
         for step, (audio, video, contexts, fps, info) in enumerate(
             valid_dataloader, 1
         ):
@@ -332,20 +332,19 @@ def train_model(
                 dist.barrier()
 
             val_loss += _val_loss
-            mean_val_loss = val_loss / step
             prog = step / len(valid_dataloader)
             total = epoch * len(valid_dataloader) + step
             if rank == 0:
                 logger.info(
                     f"[epoch {epoch} | step {step}] "
                     f"batch_progress={prog}, "
-                    f"minibatch_loss={val_loss:0.08f}"
+                    f"minibatch_loss={_val_loss:0.08f}"
                 )
                 writer.add_scalar("minibatch/progress/val", prog, total)
-                writer.add_scalar("minibatch/loss/val", mean_val_loss, total)
+                writer.add_scalar("minibatch/loss/val", _val_loss, total)
                 wandb.log({
                     "minibatch/progress/val": prog, "val_step": total,
-                    "minibatch/loss/val": mean_val_loss,
+                    "minibatch/loss/val": _val_loss,
                 })
 
             if rank == 0 and step == sample_batch_number:
@@ -452,18 +451,12 @@ def train_model(
             wandb.run.log(
                 {"checkpoint_samples": checkpoint_samples}, commit=True,
             )
+            logger.info(f"finished created checkpoint for epoch {epoch}")
 
         if distributed:
             dist.barrier()
         # wait for rank 0 to finish writing checkpoint
         logger.info(f"ending training loop for epoch {epoch}")
-        if isinstance(model, nn.parallel.DistributedDataParallel):
-            logger.info("loading distributed model from checkpoints")
-            model.load_state_dict(
-                torch.load(
-                    checkpoint_path, map_location={"cuda:0": f"cuda:{rank}"}
-                )
-            )
 
     return model
 

@@ -5,6 +5,7 @@ dvc
 joblib
 librosa
 numpy==1.20
+pandas
 torch==1.10.0
 torchvision
 torchaudio

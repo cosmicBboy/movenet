@@ -14,6 +14,7 @@ except:
     from typing_extensions import TypedDict
 
 import librosa
+import pandas as pd
 import torch
 import torchaudio
 import torchaudio.functional
@@ -68,18 +69,19 @@ class KineticsDataset(torch.utils.data.Dataset):
         self.contexts = [x.name for x in self.root_path.glob("*")]
         logger.info(f"dataset train={train} with contexts: {self.contexts}")
 
-        self.index = []
+        index = []
         for context in self.contexts:
             for fp in (self.root_path / context).glob("*.mp4"):
                 if "_raw" in fp.stem or fp.stem.startswith("."):
                     logging.debug(f"skipping file {fp}")
                     continue
                 logging.debug(f"adding {fp} from context {context}")
-                self.index.append(RawMetadata(context, str(fp)))
+                index.append(RawMetadata(context, str(fp)))
+        self.index = pd.Series(index)
 
         self.class_balance = {
-            k: v / len(self.index)
-            for k, v in Counter(x.context for x in self.index).items()
+            k: v / len(index)
+            for k, v in Counter(x.context for x in index).items()
         }
         logger.info(
             f"dataset index contains {len(self.index)} data points with class "
