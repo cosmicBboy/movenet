@@ -110,6 +110,8 @@ def read_video(filepath, input_channels):
         "video_orig_dim": video.shape[0],
         "audio_orig_dim": audio.shape[1],
     })
+    if video.shape[0] == 0:
+        return None, None, info
     video = resize_video(video.permute(0, 3, 1, 2))
     audio = one_hot_encode_audio(resample_audio(audio), input_channels)
     return video, audio, info
@@ -169,11 +171,18 @@ def make_batch(examples: List[Example]):
     audio, video, contexts, filepaths, info = [], [], [], [], []
 
     for example in examples:
+        if example.video is None:
+            continue
         video.append(example.video)
         audio.append(example.audio)
         contexts.append(example.context)
         filepaths.append(example.filepath)
         info.append(example.info)
+
+    if not video:
+        raise ValueError(
+            f"Cannot process empty batch for instances {examples}."
+        )
 
     return Batch(
         torch.stack(audio), torch.stack(video), contexts, filepaths, info

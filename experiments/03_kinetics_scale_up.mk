@@ -60,12 +60,13 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--batch_size 3 \
 	--learning_rate 0.00003 \
 	--pin_memory 1 \
-	--num_workers 16 \
+	--num_workers 4 \
 	--input_channels 128 \
 	--residual_channels 32 \
 	--layer_size 2 \
 	--stack_size 2 \
-	--checkpoint_every 1
+	--checkpoint_every 1 \
+	--accumulation_steps 10
 
 INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \

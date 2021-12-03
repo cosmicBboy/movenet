@@ -249,6 +249,8 @@ def train_model(
     if rank == 0:
         logger.info(f"Model: {model}")
 
+    n_updates = math.ceil(len(dataloader) / config.accumulation_steps)
+
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         lr=config.learning_rate,
@@ -258,7 +260,7 @@ def train_model(
         optimizer,
         max_lr=config.max_learning_rate,
         epochs=config.n_epochs,
-        steps_per_epoch=math.ceil(len(dataloader) / config.accumulation_steps),
+        steps_per_epoch=n_updates,
         three_phase=True,
     )
 
@@ -275,7 +277,7 @@ def train_model(
 
         model.train()
         train_loss = 0.0
-        batch_train_loss = 0.0
+        batch_train_loss = []
         logger.info(f"starting training loop for epoch {epoch}")
         for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
             last_step = step == len(dataloader)
@@ -284,7 +286,7 @@ def train_model(
                 audio, video, rank, scaler, last_step=last_step
             )
             train_loss += loss
-            batch_train_loss += loss
+            batch_train_loss.append(loss)
 
             prog = step / len(dataloader)
             total = epoch * len(dataloader) + step
@@ -292,6 +294,7 @@ def train_model(
                 rank == 0
                 and (step % config.accumulation_steps == 0 or last_step)
             ):
+                batch_train_loss = sum(batch_train_loss) / len(batch_train_loss)
                 batch_lr = optimizer.param_groups[0]["lr"]
                 logger.info(
                     f"[epoch {epoch} | step {step}] "
@@ -312,7 +315,7 @@ def train_model(
                     "minibatch/learning_rate": batch_lr,
                     "train_step": total,
                 })
-                batch_train_loss = 0.0
+                batch_train_loss = []
 
             if config.n_steps_per_epoch and step > config.n_steps_per_epoch:
                 break
@@ -343,8 +346,9 @@ def train_model(
                 writer.add_scalar("minibatch/progress/val", prog, total)
                 writer.add_scalar("minibatch/loss/val", _val_loss, total)
                 wandb.log({
-                    "minibatch/progress/val": prog, "val_step": total,
+                    "minibatch/progress/val": prog,
                     "minibatch/loss/val": _val_loss,
+                    "val_step": total,
                 })
 
             if rank == 0 and step == sample_batch_number:
@@ -355,7 +359,7 @@ def train_model(
         if rank == 0:
             learning_rate = optimizer.param_groups[0]["lr"]
             logger.info(f"computing training and validation loss")
-            train_loss /= len(dataloader.dataset)
+            train_loss /= n_updates
             val_loss /= len(valid_dataloader.dataset)
             logger.info(
                 f"[epoch {epoch}] "
