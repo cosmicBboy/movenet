@@ -72,8 +72,8 @@ INFRA_OPTS?=--scratch_size 512 \
 	--memory 60G \
 	--framework torch
 
-DATASET_OPTS?=--datastore_name kinetics-breakdancing \
-	--datastore_version 2 \
+DATASET_OPTS?=--datastore_name kinetics-all \
+	--datastore_version 1 \
 	--datastore_mount_dir /opt/datastore \
 
 .PHONY: train-gpu

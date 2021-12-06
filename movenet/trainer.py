@@ -85,6 +85,7 @@ class TrainingConfig:
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
     max_learning_rate: float = 0.00003
+    lr_pct_start: float = 0.45
 
     weight_decay: float = 0.0
     n_epochs: int = 100
@@ -261,6 +262,7 @@ def train_model(
         max_lr=config.max_learning_rate,
         epochs=config.n_epochs,
         steps_per_epoch=n_updates,
+        pct_start=config.lr_pct_start,
         three_phase=True,
     )
 
