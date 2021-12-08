@@ -16,7 +16,7 @@ VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
 MAX_AUDIO_FRAMES = 400000
 MAX_VIDEO_FRAMES = 400
-VIDEO_KERNEL_SIZE = (1, 10, 10)
+VIDEO_KERNEL_SIZE = (1, 128, 128)
 
 UPSAMPLE_STRIDE = 10
 
