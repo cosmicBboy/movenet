@@ -341,6 +341,7 @@ def train_model(
 
         val_loss = 0.0
         sample_output = None
+        sample_generated_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
 
@@ -349,6 +350,11 @@ def train_model(
             valid_dataloader, 1
         ):
             _val_loss, output = validation_step(model, audio, video, rank)
+
+            if step == sample_batch_number:
+                generated_output = generate_samples(
+                    model, audio, video, config.generate_n_samples, rank
+                )
             # wait for all processes to complete the validation step
             if distributed:
                 dist.barrier()
@@ -371,10 +377,8 @@ def train_model(
                 })
 
             if rank == 0 and step == sample_batch_number:
-                sample_synth_output = output
-                sample_generated_output = generate_samples(
-                    model, audio, video, config.generate_n_samples, rank
-                )
+                sample_synth_output = output.to(rank)
+                sample_generated_output = generated_output.to(rank)
                 sample_fps = fps
                 sample_info = info
 
