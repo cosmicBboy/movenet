@@ -16,3 +16,4 @@ pytorchvideo
 wandb
 opencv-python-headless
 tensorflow
+tqdm

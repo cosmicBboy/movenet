@@ -38,6 +38,11 @@ from movenet.wavenet import (
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
+GRID_EXPERIMENT_NAME = os.getenv("GRID_EXPERIMENT_NAME", None)
+WANDB_PROJECT = "dance2music-local"
+if GRID_EXPERIMENT_NAME:
+    WANDB_PROJECT = "dance2music"
+
 CLIP_GRAD = 10.0
 
 
@@ -54,7 +59,7 @@ def configure_logging():
 def wandb_setup():
     wandb.login()
     wandb.init(
-        project="dance2music",
+        project=WANDB_PROJECT,
         entity="nielsbantilan",
         name=os.getenv("GRID_EXPERIMENT_NAME", None)
     )
@@ -81,6 +86,9 @@ class TrainingConfig:
     accumulation_steps: int = 1
     num_workers: int = 0
     pin_memory: bool = False
+
+    # sample generation
+    generate_n_samples: Optional[int] = None
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
@@ -165,6 +173,15 @@ def validation_step(model, audio, video, rank=0):
         loss = F.cross_entropy(output, target).detach().item()
 
     return loss, output
+
+
+@torch.no_grad()
+def generate_samples(model, audio, video, n_samples, rank=0):
+    with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
+        if torch.cuda.is_available():
+            audio, video = audio.cuda(rank), video.cuda(rank)
+        output = model.generate(audio, video, n_samples=n_samples)
+    return output
 
 
 def train_model(
@@ -354,7 +371,10 @@ def train_model(
                 })
 
             if rank == 0 and step == sample_batch_number:
-                sample_output = output
+                sample_synth_output = output
+                sample_generated_output = generate_samples(
+                    model, audio, video, config.generate_n_samples, rank
+                )
                 sample_fps = fps
                 sample_info = info
 
@@ -400,18 +420,37 @@ def train_model(
             )
 
             logger.info("decoding output samples")
-            output_samples = mu_law_decoding(
-                sample_output.argmax(1), config.model_config.input_channels
+            synth_output_samples = mu_law_decoding(
+                sample_synth_output.argmax(1),
+                config.model_config.input_channels
             ).to("cpu")
 
-            torch.save(output_samples, fp / "output_samples.pth")
+            gen_output_samples = mu_law_decoding(
+                sample_generated_output.argmax(1),
+                config.model_config.input_channels
+            ).to("cpu")
+
+            torch.save(synth_output_samples, fp / "synth_output_samples.pth")
+            torch.save(gen_output_samples, fp / "gen_output_samples.pth")
 
             checkpoint_samples = wandb.Table(
-                columns=["epoch", "id", "video", "orig_audio", "synth_audio"]
+                columns=[
+                    "epoch",
+                    "id",
+                    "video",
+                    "orig_audio",
+                    "synth_audio",  # given full information on audio signal
+                    "generated_audio",  # generated from scratch
+                ]
             )
 
-            for i, (sample_fp, info, sample) in enumerate(
-                zip(sample_fps, sample_info, output_samples)
+            for i, (sample_fp, info, synth_sample, gen_sample) in enumerate(
+                zip(
+                    sample_fps,
+                    sample_info,
+                    synth_output_samples,
+                    gen_output_samples,
+                )
             ):
                 sample_fp = Path(sample_fp)
                 # save original video files
@@ -421,37 +460,55 @@ def train_model(
                 )
                 shutil.copyfile(sample_fp, video_fp)
                 # upsample audio to the original dimensionality
-                resampled = torch.from_numpy(
+                synth_sample = torch.from_numpy(
                     librosa.resample(
-                        sample.numpy(),
-                        sample.shape[0],
+                        synth_sample.numpy(),
+                        synth_sample.shape[0],
                         info["audio_orig_dim"],
                     )
                 )
-                resampled = torch.stack([resampled, resampled])
+                if config.generate_n_samples is None:
+                    gen_sample = torch.from_numpy(
+                        librosa.resample(
+                            gen_sample.numpy(),
+                            gen_sample.shape[0],
+                            info["audio_orig_dim"],
+                        )
+                    )
+                synth_sample = torch.stack([synth_sample, synth_sample])
+                gen_sample = torch.stack([gen_sample, gen_sample])
                 # save generated mp3 file
-                synth_audio_fp = str(fp / f"synth_audio_{sample_fp.stem}.wav")
-                orig_audio_fp = str(fp / f"orig_audio_{sample_fp.stem}.wav")
-                torchaudio.save(
-                    synth_audio_fp,
-                    resampled,
-                    sample_rate=info["audio_fps"],
-                    format="wav",
-                )
-                torchaudio.save(
-                    orig_audio_fp,
-                    orig_audio,
-                    sample_rate=info["audio_fps"],
-                    format="wav",
-                )
+                synth_audio_fp = fp / f"synth_audio_{sample_fp.stem}.wav"
+                gen_audio_fp = fp / f"gen_audio_{sample_fp.stem}.wav"
+                orig_audio_fp = fp / f"orig_audio_{sample_fp.stem}.wav"
+                for ext in ["wav", "mp3"]:
+                    torchaudio.save(
+                        str(synth_audio_fp.with_suffix(f".{ext}")),
+                        synth_sample,
+                        sample_rate=info["audio_fps"],
+                        format=ext,
+                    )
+                    torchaudio.save(
+                        str(gen_audio_fp.with_suffix(f".{ext}")),
+                        gen_sample,
+                        sample_rate=info["audio_fps"],
+                        format=ext,
+                    )
+                    torchaudio.save(
+                        str(orig_audio_fp.with_suffix(f".{ext}")),
+                        orig_audio,
+                        sample_rate=info["audio_fps"],
+                        format=ext,
+                    )
                 # log on wandb
                 caption = f"instance id: {sample_fp.stem}"
                 checkpoint_samples.add_data(
                     epoch,
                     sample_fp.stem,
                     wandb.Video(video_fp, caption=caption),
-                    wandb.Audio(orig_audio_fp, caption=caption),
-                    wandb.Audio(synth_audio_fp, caption=caption),
+                    wandb.Audio(str(orig_audio_fp), caption=caption),
+                    wandb.Audio(str(synth_audio_fp), caption=caption),
+                    wandb.Audio(str(gen_audio_fp), caption=caption),
                 )
 
             wandb.run.log(
@@ -514,7 +571,14 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=0.0003)
     parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--pin_memory", type=lambda x: bool(int(x)), default=False)
+    parser.add_argument(
+        "--pin_memory", type=lambda x: bool(int(x)), default=False,
+    )
+    parser.add_argument(
+        "--generate_n_samples",
+        type=lambda x: x if x is None else int(x),
+        default=None
+    )
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_steps_per_epoch", type=int, default=None)
     parser.add_argument("--checkpoint_every", type=int, default=1)
@@ -585,6 +649,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
+        generate_n_samples=args.generate_n_samples,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,

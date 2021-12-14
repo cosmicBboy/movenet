@@ -1,9 +1,18 @@
+"""Wavenet Module.
+
+Reference implementation:
+https://github.com/golbin/WaveNet/blob/master/wavenet/networks.py
+"""
+
 import functools
+from typing import Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchtyping import TensorType
+from tqdm import tqdm
 
 from movenet.modules import (
     CausalConv1d,
@@ -142,6 +151,7 @@ class WaveNet(nn.Module):
     ):
         video = self.upsample_video(video)
         audio = self.causal_conv(audio)
+        # TODO: apply causal_conv to video signal as well?
         assert video.size() == audio.size(), (
             "expected video and audio tensors to have equal sizes, found "
             f"{video.size()}, {audio.size()}"
@@ -153,3 +163,43 @@ class WaveNet(nn.Module):
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
         return output
+
+    def generate(
+        self,
+        audio: AudioTensor,
+        video: VideoTensor,
+        global_features: TensorType = None,
+        n_samples: Optional[int] = None,
+    ):
+        video = self.upsample_video(video)
+
+        shape = audio.shape if n_samples is None else (
+            audio.shape[0], audio.shape[1], n_samples
+        )
+
+        generated_audio = torch.zeros(shape)
+        generated_audio[:, :, 0] = audio[:, :, n_samples or audio.shape[-1] - 1]
+
+        # pad the input signal with enough input values to accommodate the
+        # model's receptive fields
+        total = generated_audio.shape[-1] - 1
+        for i in tqdm(range(total), total=total):
+            padding = (max(0, self.receptive_fields - i), 0)
+            padded_audio = self.causal_conv(
+                F.pad(generated_audio[:, :, :i + 1], padding, "constant", 0)
+            )
+            padded_video = F.pad(video[:, :, :i + 1], padding, "constant", 0)
+
+            skip_connections = self.residual_conv_stack(
+                input=padded_audio,
+                context=padded_video,
+                skip_size=self.compute_output_size(audio)
+            )
+            output = self.dense_conv(
+                torch.sum(skip_connections, dim=0)
+            )[:, :, -1:]
+            generated_audio[:, :, [i + 1]] = torch.zeros_like(output).scatter_(
+                1, output.argmax(1, keepdims=True), 1
+            )
+
+        return generated_audio
