@@ -180,7 +180,7 @@ def generate_samples(model, audio, video, n_samples, rank=0):
     with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
         if torch.cuda.is_available():
             audio, video = audio.cuda(rank), video.cuda(rank)
-        output = model.generate(audio, video, n_samples=n_samples)
+        output = model(audio, video, generate=True, n_samples=n_samples)
     return output
 
 

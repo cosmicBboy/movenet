@@ -148,7 +148,11 @@ class WaveNet(nn.Module):
         audio: AudioTensor,
         video: VideoTensor,
         global_features: TensorType = None,
+        generate: bool = False,
+        n_samples: Optional[int] = None,
     ):
+        if generate:
+            return self.generate(audio, video, global_features, n_samples)
         video = self.upsample_video(video)
         audio = self.causal_conv(audio)
         # TODO: apply causal_conv to video signal as well?
