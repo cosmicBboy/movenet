@@ -161,10 +161,8 @@ def training_step(
 
 
 @torch.no_grad()
-def validation_step(model, audio, video, rank=0):
-    # TODO: make sure this is only using video to generate audio
-    # - need to figure out how to auto-regressively feed in the audio output to
-    #   generate full audio sequence
+def validation_step(model, audio, video, rank=0, n_samples=None):
+    generated_output = None
     with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
         if torch.cuda.is_available():
             audio, video = audio.cuda(rank), video.cuda(rank)
@@ -172,7 +170,12 @@ def validation_step(model, audio, video, rank=0):
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
 
-    return loss, output
+        if n_samples:
+            generated_output = model(
+                audio, video, generate=True, n_samples=n_samples
+            )
+
+    return loss, output, generated_output
 
 
 @torch.no_grad()
@@ -345,18 +348,21 @@ def train_model(
         sample_generated_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
+        logger.info(f"sample_batch_number: {sample_batch_number}")
 
         model.eval()
         for step, (audio, video, contexts, fps, info) in enumerate(
             valid_dataloader, 1
         ):
-            _val_loss, output = validation_step(model, audio, video, rank)
-
+            n_samples = None
             if step == sample_batch_number:
-                logger.info(f"generating samples for step {step}")
-                generated_output = generate_samples(
-                    model, audio, video, config.generate_n_samples, rank
+                n_samples = (
+                    config.generate_n_samples or audio.shape[-1]
                 )
+                logger.info(f"generating {n_samples} samples for step {step}")
+            _val_loss, output, generated_output = validation_step(
+                model, audio, video, rank, n_samples=n_samples
+            )
             # wait for all processes to complete the validation step
             if distributed:
                 dist.barrier()
