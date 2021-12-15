@@ -298,8 +298,9 @@ def train_model(
         train_loss = 0.0
         batch_train_loss = []
         logger.info(f"starting training loop for epoch {epoch}")
+        total_n_steps = config.n_steps_per_epoch or len(dataloader)
         for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
-            last_step = step == len(dataloader)
+            last_step = step == total_n_steps
             loss, grad_norm = training_step(
                 config, step, model, optimizer, scheduler,
                 audio, video, rank, scaler, last_step=last_step
@@ -307,8 +308,8 @@ def train_model(
             train_loss += loss
             batch_train_loss.append(loss)
 
-            prog = step / len(dataloader)
-            total = epoch * len(dataloader) + step
+            prog = step / total_n_steps
+            total = epoch * total_n_steps + step
             if (
                 rank == 0
                 and (step % config.accumulation_steps == 0 or last_step)
