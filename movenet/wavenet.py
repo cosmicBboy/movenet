@@ -182,7 +182,7 @@ class WaveNet(nn.Module):
         )
 
         generated_audio = torch.zeros(
-            shape, dtype=audio.dtype, devine=audio.device
+            shape, dtype=audio.dtype, device=audio.device
         )
         generated_audio[:, :, 0] = audio[:, :, n_samples or audio.shape[-1] - 1]
 
