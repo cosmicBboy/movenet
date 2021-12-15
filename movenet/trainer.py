@@ -352,6 +352,7 @@ def train_model(
             _val_loss, output = validation_step(model, audio, video, rank)
 
             if step == sample_batch_number:
+                logger.info(f"generating samples for step {step}")
                 generated_output = generate_samples(
                     model, audio, video, config.generate_n_samples, rank
                 )
