@@ -178,15 +178,6 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
     return loss, output, generated_output
 
 
-@torch.no_grad()
-def generate_samples(model, audio, video, n_samples, rank=0):
-    with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
-        if torch.cuda.is_available():
-            audio, video = audio.cuda(rank), video.cuda(rank)
-        output = model(audio, video, generate=True, n_samples=n_samples)
-    return output
-
-
 def train_model(
     config: TrainingConfig,
     dataset_fp: str,
@@ -383,10 +374,16 @@ def train_model(
                 })
 
             if rank == 0 and step == sample_batch_number:
-                sample_synth_output = output.to(rank)
-                sample_generated_output = generated_output.to(rank)
+                sample_synth_output = output
+                sample_generated_output = generated_output
+                if torch.cuda.is_available():
+                    sample_synth_output = sample_synth_output.to(rank)
+                    sample_generated_output = sample_generated_output.to(rank)
                 sample_fps = fps
                 sample_info = info
+
+            if distributed:
+                dist.barrier()
 
         if rank == 0:
             learning_rate = optimizer.param_groups[0]["lr"]
