@@ -190,12 +190,28 @@ class WaveNet(nn.Module):
 
         # pad the input signal with enough input values to accommodate the
         # model's receptive fields
-        for i in range(generated_audio.shape[-1] - 1):
-            padding = (max(0, self.receptive_fields - i), 0)
-            padded_audio = self.causal_conv(
-                F.pad(generated_audio[:, :, :i + 1], padding, "constant", 0)
-            )
-            padded_video = F.pad(video[:, :, :i + 1], padding, "constant", 0)
+        for i in tqdm(range(generated_audio.shape[-1] - 1)):
+            left_pad = max(0, self.receptive_fields - i)
+            if left_pad:
+                padded_audio = F.pad(
+                    generated_audio[:, :, :i + 1], (left_pad, 0), "constant", 0
+                )
+                padded_video = F.pad(
+                    video[:, :, :i + 1], (left_pad, 0), "constant", 0
+                )
+            else:
+                start, end = i - self.receptive_fields, i + 1
+                padded_audio = audio[:, :, start: end]
+                padded_video = video[:, :, start: end]
+
+            padded_audio = self.causal_conv(padded_audio)
+            expected = self.receptive_fields + 1
+            assert padded_audio.shape[-1] == self.receptive_fields + 1, \
+                "audio signal during sample generation expected to be " \
+                f"{expected}, found {padded_audio.shape[-1]}"
+            assert padded_video.shape[-1] == self.receptive_fields + 1, \
+                f"video signal during sample generation expected to be " \
+                f"{expected}, found {padded_video.shape[-1]}"
 
             skip_connections = self.residual_conv_stack(
                 input=padded_audio,
@@ -208,5 +224,4 @@ class WaveNet(nn.Module):
             generated_audio[:, :, [i + 1]] = torch.zeros_like(output).scatter_(
                 1, output.argmax(1, keepdims=True), 1
             )
-
         return generated_audio

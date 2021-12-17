@@ -9,6 +9,7 @@ import shutil
 from dataclasses import dataclass, asdict, field
 from dataclasses_json import dataclass_json, config
 from pathlib import Path
+from time import time
 from typing import Optional
 
 import librosa
@@ -171,9 +172,11 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
         loss = F.cross_entropy(output, target).detach().item()
 
         if n_samples:
+            start = time()
             generated_output = model(
                 audio, video, generate=True, n_samples=n_samples
             )
+            logger.info(f"sample generation took {time() - start} seconds")
 
     return loss, output, generated_output
 
