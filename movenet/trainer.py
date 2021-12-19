@@ -170,15 +170,19 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
         output = model(audio, video)
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
+        F.cross_entropy(audio[:, :, model.receptive_fields:], target)
 
         if n_samples:
             start = time()
             generated_output = model(
                 audio, video, generate=True, n_samples=n_samples
             )
+            generated_loss = F.cross_entropy(
+                generated_output, target[:, :n_samples]
+            )
             logger.info(f"sample generation took {time() - start} seconds")
 
-    return loss, output, generated_output
+    return loss, output, generated_loss, generated_output
 
 
 def train_model(
@@ -338,6 +342,7 @@ def train_model(
                 break
 
         val_loss = 0.0
+        val_gen_loss = 0.0
         sample_output = None
         sample_generated_output = None
         sample_fps = None
@@ -352,7 +357,7 @@ def train_model(
             if step == sample_batch_number:
                 n_samples = config.generate_n_samples or audio.shape[-1]
                 logger.info(f"generating {n_samples} samples for step {step}")
-            _val_loss, output, generated_output = validation_step(
+            _val_loss, output, _gen_loss, generated_output = validation_step(
                 model, audio, video, rank, n_samples=n_samples
             )
             # wait for all processes to complete the validation step
@@ -360,6 +365,7 @@ def train_model(
                 dist.barrier()
 
             val_loss += _val_loss
+            val_gen_loss += _gen_loss
             prog = step / len(valid_dataloader)
             total = epoch * len(valid_dataloader) + step
             if rank == 0:
@@ -370,9 +376,11 @@ def train_model(
                 )
                 writer.add_scalar("minibatch/progress/val", prog, total)
                 writer.add_scalar("minibatch/loss/val", _val_loss, total)
+                writer.add_scalar("minibatch/loss/gen/val", _gen_loss, total)
                 wandb.log({
                     "minibatch/progress/val": prog,
                     "minibatch/loss/val": _val_loss,
+                    "minibatch/loss/gen/val": _gen_loss,
                     "val_step": total,
                 })
 
@@ -393,21 +401,25 @@ def train_model(
             logger.info(f"computing training and validation loss")
             train_loss /= n_updates
             val_loss /= len(valid_dataloader.dataset)
+            val_gen_loss /= len(valid_dataloader.dataset)
             logger.info(
                 f"[epoch {epoch}] "
                 f"train_loss={train_loss:0.08f}, "
-                f"val_loss={loss:0.08f}, "
+                f"val_loss={val_loss:0.08f}, "
+                f"val_gen_loss={val_gen_loss:0.08f}, "
                 f"learning_rate={learning_rate:0.08f}"
             )
             writer.add_scalar("epochs", epoch, epoch)
             writer.add_scalar("loss/train", train_loss, epoch)
             writer.add_scalar("loss/val", val_loss, epoch)
+            writer.add_scalar("loss/gen/val", val_gen_loss, epoch)
             writer.add_scalar("learning_rate", learning_rate, epoch)
 
             wandb.log(
                 {
                     "loss/train": train_loss,
                     "loss/val": val_loss,
+                    "loss/gen/val": val_gen_loss,
                     "learning_rate": learning_rate,
                     "epoch": epoch,
                 },
