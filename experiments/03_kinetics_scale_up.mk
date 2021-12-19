@@ -9,8 +9,7 @@ TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--layer_size 1 \
 	--stack_size 1 \
 	--checkpoint_every 1 \
-	--n_steps_per_epoch 5 \
-	--generate_n_samples 10000
+	--n_steps_per_epoch 5
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \

@@ -184,9 +184,7 @@ class WaveNet(nn.Module):
         generated_audio = torch.zeros(
             shape, dtype=audio.dtype, device=audio.device
         )
-        generated_audio[:, :, 0] = audio[
-            :, :, (n_samples or audio.shape[-1]) - 1
-        ]
+        generated_audio[:, :, 0] = audio[:, :, 0]
 
         # pad the input signal with enough input values to accommodate the
         # model's receptive fields
