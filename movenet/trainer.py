@@ -179,7 +179,7 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
                 audio, video, generate=True, n_samples=n_samples
             )
             generated_loss = F.cross_entropy(
-                generated_output, target[:, :n_samples]
+                generated_output, target[:, :generated_output.shape[-1]]
             )
             logger.info(f"sample generation took {time() - start} seconds")
 
