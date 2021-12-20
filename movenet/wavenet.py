@@ -12,7 +12,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchtyping import TensorType
-from tqdm import tqdm
 
 from movenet.modules import (
     CausalConv1d,
@@ -188,7 +187,7 @@ class WaveNet(nn.Module):
 
         # pad the input signal with enough input values to accommodate the
         # model's receptive fields
-        for i in tqdm(range(generated_audio.shape[-1] - 1)):
+        for i in range(generated_audio.shape[-1] - 1):
             left_pad = max(0, self.receptive_fields - i)
             if left_pad:
                 padded_audio = F.pad(
