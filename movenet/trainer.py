@@ -163,6 +163,7 @@ def training_step(
 
 @torch.no_grad()
 def validation_step(model, audio, video, rank=0, n_samples=None):
+    generated_loss = None
     generated_output = None
     with torch.autocast("cuda" if torch.cuda.is_available() else "cpu"):
         if torch.cuda.is_available():
