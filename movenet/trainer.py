@@ -171,7 +171,6 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
         output = model(audio, video)
         target = audio[:, :, model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target).detach().item()
-        F.cross_entropy(audio[:, :, model.receptive_fields:], target)
 
         if n_samples:
             start = time()
@@ -179,8 +178,8 @@ def validation_step(model, audio, video, rank=0, n_samples=None):
                 audio, video, generate=True, n_samples=n_samples
             )
             generated_loss = F.cross_entropy(
-                generated_output[:, :, :n_samples], target[:, :n_samples]
-            )
+                generated_output, target[:, :n_samples]
+            ).detach().item()
             logger.info(f"sample generation took {time() - start} seconds")
 
     return loss, output, generated_loss, generated_output
@@ -356,10 +355,13 @@ def train_model(
         ):
             n_samples = None
             if step == sample_batch_number:
-                n_samples = config.generate_n_samples or audio.shape[-1]
+                n_samples = (
+                    config.generate_n_samples
+                    or audio.shape[-1] - model.receptive_fields
+                )
                 logger.info(f"generating {n_samples} samples for step {step}")
             _val_loss, output, _gen_loss, generated_output = validation_step(
-                model, audio, video, rank, n_samples=n_samples
+                model, audio, video, rank, n_samples=n_samples,
             )
             # wait for all processes to complete the validation step
             if distributed:
