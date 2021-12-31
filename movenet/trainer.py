@@ -349,6 +349,9 @@ def train_model(
         logger.info(f"starting validation loop for epoch {epoch}")
         logger.info(f"sample_batch_number: {sample_batch_number}")
 
+        # only generate audio samples for first and last epoch
+        generate_audio_samples = epoch == 0 or epoch == config.n_epochs - 1
+
         model.eval()
         for step, (audio, video, contexts, fps, info) in enumerate(
             valid_dataloader, 1
@@ -389,10 +392,13 @@ def train_model(
 
             if rank == 0 and step == sample_batch_number:
                 sample_synth_output = output
-                sample_generated_output = generated_output
+                if generate_audio_samples:
+                    sample_generated_output = generated_output
+
                 if torch.cuda.is_available():
                     sample_synth_output = sample_synth_output.to(rank)
-                    sample_generated_output = sample_generated_output.to(rank)
+                    if generate_audio_samples:
+                        sample_generated_output = sample_generated_output.to(rank)
                 sample_fps = fps
                 sample_info = info
 
@@ -415,8 +421,9 @@ def train_model(
             writer.add_scalar("epochs", epoch, epoch)
             writer.add_scalar("loss/train", train_loss, epoch)
             writer.add_scalar("loss/val", val_loss, epoch)
-            writer.add_scalar("loss/gen/val", val_gen_loss, epoch)
             writer.add_scalar("learning_rate", learning_rate, epoch)
+            if generate_audio_samples:
+                writer.add_scalar("loss/gen/val", val_gen_loss, epoch)
 
             wandb.log(
                 {
@@ -432,7 +439,6 @@ def train_model(
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
         if epoch % config.checkpoint_every == 0 and rank == 0:
-            # TODO: find out where training halts
             logger.info(f"creating checkpoint at epoch {epoch}")
 
             logger.info(f"checkpoint path: {fp}")
@@ -450,13 +456,16 @@ def train_model(
                 config.model_config.input_channels
             ).to("cpu")
 
-            gen_output_samples = mu_law_decoding(
-                sample_generated_output.argmax(1),
-                config.model_config.input_channels
-            ).to("cpu")
-
             torch.save(synth_output_samples, fp / "synth_output_samples.pth")
-            torch.save(gen_output_samples, fp / "gen_output_samples.pth")
+
+            if generate_audio_samples:
+                gen_output_samples = mu_law_decoding(
+                    sample_generated_output.argmax(1),
+                    config.model_config.input_channels
+                ).to("cpu")
+                torch.save(gen_output_samples, fp / "gen_output_samples.pth")
+            else:
+                gen_output_samples = [None] * config.batch_size
 
             checkpoint_samples = wandb.Table(
                 columns=[
@@ -468,6 +477,15 @@ def train_model(
                     "generated_audio",  # generated from scratch
                 ]
             )
+            try:
+                zip(
+                    sample_fps,
+                    sample_info,
+                    synth_output_samples,
+                    gen_output_samples,
+                )
+            except:
+                import ipdb; ipdb.set_trace()
 
             for i, (sample_fp, info, synth_sample, gen_sample) in enumerate(
                 zip(
@@ -492,7 +510,9 @@ def train_model(
                         info["audio_orig_dim"],
                     )
                 )
-                if config.generate_n_samples is None:
+                synth_sample = torch.stack([synth_sample, synth_sample])
+
+                if gen_sample is not None:
                     gen_sample = torch.from_numpy(
                         librosa.resample(
                             gen_sample.numpy(),
@@ -500,13 +520,21 @@ def train_model(
                             info["audio_orig_dim"],
                         )
                     )
-                synth_sample = torch.stack([synth_sample, synth_sample])
-                gen_sample = torch.stack([gen_sample, gen_sample])
+                    gen_sample = torch.stack([gen_sample, gen_sample])
+                else:
+                    gen_sample = torch.zeros_like(synth_sample)
+
                 # save generated mp3 file
                 synth_audio_fp = fp / f"synth_audio_{sample_fp.stem}.wav"
                 gen_audio_fp = fp / f"gen_audio_{sample_fp.stem}.wav"
                 orig_audio_fp = fp / f"orig_audio_{sample_fp.stem}.wav"
                 for ext in ["wav", "mp3"]:
+                    torchaudio.save(
+                        str(orig_audio_fp.with_suffix(f".{ext}")),
+                        orig_audio,
+                        sample_rate=info["audio_fps"],
+                        format=ext,
+                    )
                     torchaudio.save(
                         str(synth_audio_fp.with_suffix(f".{ext}")),
                         synth_sample,
@@ -519,21 +547,16 @@ def train_model(
                         sample_rate=info["audio_fps"],
                         format=ext,
                     )
-                    torchaudio.save(
-                        str(orig_audio_fp.with_suffix(f".{ext}")),
-                        orig_audio,
-                        sample_rate=info["audio_fps"],
-                        format=ext,
-                    )
                 # log on wandb
                 caption = f"instance id: {sample_fp.stem}"
-                checkpoint_samples.add_data(
-                    epoch,
-                    sample_fp.stem,
+                checkpoint_data = [
                     wandb.Video(video_fp, caption=caption),
                     wandb.Audio(str(orig_audio_fp), caption=caption),
                     wandb.Audio(str(synth_audio_fp), caption=caption),
                     wandb.Audio(str(gen_audio_fp), caption=caption),
+                ]
+                checkpoint_samples.add_data(
+                    epoch, sample_fp.stem, *checkpoint_data
                 )
 
             wandb.run.log(
