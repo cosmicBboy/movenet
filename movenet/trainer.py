@@ -357,7 +357,7 @@ def train_model(
             valid_dataloader, 1
         ):
             n_samples = None
-            if step == sample_batch_number:
+            if generate_audio_samples and step == sample_batch_number:
                 n_samples = (
                     config.generate_n_samples
                     or audio.shape[-1] - model.receptive_fields
