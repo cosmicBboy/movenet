@@ -349,8 +349,8 @@ def train_model(
         logger.info(f"starting validation loop for epoch {epoch}")
         logger.info(f"sample_batch_number: {sample_batch_number}")
 
-        # only generate audio samples for first and last epoch
-        generate_audio_samples = epoch == 0 or epoch == config.n_epochs - 1
+        # only generate audio samples for last epoch
+        generate_audio_samples = epoch == config.n_epochs - 1
 
         model.eval()
         for step, (audio, video, contexts, fps, info) in enumerate(

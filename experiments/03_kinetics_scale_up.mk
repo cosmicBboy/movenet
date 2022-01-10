@@ -20,8 +20,7 @@ DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-breakdancing \
 	--datastore_mount_dir /opt/datastore
 
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
-	--memory 60G \
-	--framework torch
+	--memory 100
 
 
 PRETRAINED_RUN_EXP_NAME?=
@@ -70,8 +69,7 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--accumulation_steps 10
 
 INFRA_OPTS?=--scratch_size 512 \
-	--memory 60G \
-	--framework torch
+	--memory 100
 
 DATASET_OPTS?=--datastore_name kinetics-all \
 	--datastore_version 1 \
