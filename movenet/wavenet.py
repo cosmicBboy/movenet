@@ -198,7 +198,7 @@ class WaveNet(nn.Module):
                 )
             else:
                 start, end = i - self.receptive_fields, i + 1
-                padded_audio = audio[:, :, start: end]
+                padded_audio = generated_audio[:, :, start: end]
                 padded_video = video[:, :, start: end]
 
             padded_audio = self.causal_conv(padded_audio)
