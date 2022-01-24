@@ -91,3 +91,23 @@ train-gpu:
 			--grid_user_name="${GRID_USERNAME}" \
 			--grid_api_key="${GRID_API_KEY}" \
 			--wandb_api_key=${WANDB_API_KEY}
+
+
+.PHONY: train-gpu-spot
+train-gpu-spot:
+	grid run --dockerfile Dockerfile-gpu \
+		--instance_type p3.8xlarge \
+		--cpus 30  \
+		--gpus 4 \
+		--ignore_warnings \
+		--use_spot \
+		--auto_resume \
+		${INFRA_OPTS} \
+		${DATASET_OPTS} \
+		movenet/trainer.py ${TRAIN_OPTS} \
+			--model_output_path models \
+			--pretrained_model_path "/artifacts/${PRETRAINED_RUN_EXP_NAME}/models/model.pth" \
+			--pretrained_run_exp_name "${PRETRAINED_RUN_EXP_NAME}" \
+			--grid_user_name="${GRID_USERNAME}" \
+			--grid_api_key="${GRID_API_KEY}" \
+			--wandb_api_key=${WANDB_API_KEY}
