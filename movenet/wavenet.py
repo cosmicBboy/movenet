@@ -183,36 +183,29 @@ class WaveNet(nn.Module):
         generated_audio = torch.zeros(
             shape, dtype=audio.dtype, device=audio.device
         )
-        generated_audio[:, :, 0] = audio[:, :, 0]
+        generated_audio[:, :, :self.receptive_fields] = audio[
+            :, :, :self.receptive_fields
+        ]
 
         # pad the input signal with enough input values to accommodate the
         # model's receptive fields
-        for i in range(generated_audio.shape[-1] - 1):
-            left_pad = max(0, self.receptive_fields - i)
-            if left_pad:
-                padded_audio = F.pad(
-                    generated_audio[:, :, :i + 1], (left_pad, 0), "constant", 0
-                )
-                padded_video = F.pad(
-                    video[:, :, :i + 1], (left_pad, 0), "constant", 0
-                )
-            else:
-                start, end = i - self.receptive_fields, i + 1
-                padded_audio = generated_audio[:, :, start: end]
-                padded_video = video[:, :, start: end]
+        for i in range(self.receptive_fields, generated_audio.shape[-1] - 1):
+            start, end = i - self.receptive_fields, i + 1
+            local_audio = generated_audio[:, :, start: end]
+            local_video = video[:, :, start: end]
 
-            padded_audio = self.causal_conv(padded_audio)
+            local_audio = self.causal_conv(local_audio)
             expected = self.receptive_fields + 1
-            assert padded_audio.shape[-1] == self.receptive_fields + 1, \
+            assert local_audio.shape[-1] == self.receptive_fields + 1, \
                 "audio signal during sample generation expected to be " \
-                f"{expected}, found {padded_audio.shape[-1]}"
-            assert padded_video.shape[-1] == self.receptive_fields + 1, \
+                f"{expected}, found {local_audio.shape[-1]}"
+            assert local_video.shape[-1] == self.receptive_fields + 1, \
                 f"video signal during sample generation expected to be " \
-                f"{expected}, found {padded_video.shape[-1]}"
+                f"{expected}, found {local_video.shape[-1]}"
 
             skip_connections = self.residual_conv_stack(
-                input=padded_audio,
-                context=padded_video,
+                input=local_audio,
+                context=local_video,
                 skip_size=self.compute_output_size(audio)
             )
             output = self.dense_conv(
