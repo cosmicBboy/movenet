@@ -3,21 +3,22 @@ N_DEBUG_EPOCHS?=3
 
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
-	--batch_size 2 \
+	--batch_size 1 \
 	--learning_rate 0.00003 \
 	--input_channels 128 \
-	--residual_channels 32 \
+	--residual_channels 16 \
 	--layer_size 14 \
-	--stack_size 2 \
+	--stack_size 1 \
 	--checkpoint_every 1 \
-	--accumulation_steps 10
+	--accumulation_steps 3 \
+	--generate_n_samples 10000
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
 	--datastore_mount_dir /opt/datastore
 
-DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-breakdancing \
-	--datastore_version 2 \
+DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-debug \
+	--datastore_version 5 \
 	--datastore_mount_dir /opt/datastore
 
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
@@ -43,12 +44,12 @@ train-debug:
 .PHONY: train-debug-gpu
 train-debug-gpu:
 	grid run --dockerfile Dockerfile-gpu \
-		--instance_type p3.8xlarge \
-		--cpus 30  \
-		--gpus 4 \
+		--instance_type p3.2xlarge \
+		--cpus 7  \
+		--gpus 1 \
 		--ignore_warnings \
 		${INFRA_DEBUG_OPTS} \
-		${DATASET_GPU_DEBUG_OPTS} \
+		${DATASET_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}
@@ -64,8 +65,8 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--num_workers 4 \
 	--input_channels 128 \
 	--residual_channels 32 \
-	--layer_size 2 \
-	--stack_size 2 \
+	--layer_size 12 \
+	--stack_size 3 \
 	--checkpoint_every 1 \
 	--accumulation_steps 10
 
