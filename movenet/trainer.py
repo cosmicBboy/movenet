@@ -513,13 +513,16 @@ def train_model(
                 synth_sample = torch.stack([synth_sample, synth_sample])
 
                 if gen_sample is not None:
-                    gen_sample = torch.from_numpy(
-                        librosa.resample(
-                            gen_sample.numpy(),
-                            gen_sample.shape[0],
-                            info["audio_orig_dim"],
+                    if not config.generate_n_samples:
+                        # only upsample when generate_n_samples is not
+                        # configured as a hyperparameter
+                        gen_sample = torch.from_numpy(
+                            librosa.resample(
+                                gen_sample.numpy(),
+                                gen_sample.shape[0],
+                                info["audio_orig_dim"],
+                            )
                         )
-                    )
                     gen_sample = torch.stack([gen_sample, gen_sample])
                 else:
                     gen_sample = torch.zeros_like(synth_sample)
