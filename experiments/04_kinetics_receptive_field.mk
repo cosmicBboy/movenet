@@ -17,10 +17,6 @@ DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
 	--datastore_mount_dir /opt/datastore
 
-DATASET_GPU_DEBUG_OPTS?=--datastore_name kinetics-debug \
-	--datastore_version 5 \
-	--datastore_mount_dir /opt/datastore
-
 INFRA_DEBUG_OPTS?=--scratch_size 512 \
 	--memory 100
 
@@ -49,7 +45,7 @@ train-debug-gpu:
 		--gpus 1 \
 		--ignore_warnings \
 		${INFRA_DEBUG_OPTS} \
-		${DATASET_GPU_DEBUG_OPTS} \
+		${DATASET_DEBUG_OPTS} \
 		movenet/trainer.py ${TRAIN_DEBUG_OPTS} \
 			--model_output_path models \
 			--wandb_api_key=${WANDB_API_KEY}
@@ -64,7 +60,7 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--pin_memory 1 \
 	--num_workers 4 \
 	--input_channels 128 \
-	--residual_channels 32 \
+	--residual_channels 16 \
 	--layer_size 14 \
 	--stack_size 1 \
 	--checkpoint_every 1 \
