@@ -17,4 +17,3 @@ wandb
 opencv-python-headless==4.5.3.56
 tensorflow==2.7.0
 tqdm
-ipdb==0.13.7

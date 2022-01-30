@@ -71,7 +71,7 @@ INFRA_OPTS?=--scratch_size 512 \
 	--memory 100
 
 DATASET_OPTS?=--datastore_name kinetics-breakdancing \
-	--datastore_version 2 \
+	--datastore_version 3 \
 	--datastore_mount_dir /opt/datastore \
 
 .PHONY: train-gpu
