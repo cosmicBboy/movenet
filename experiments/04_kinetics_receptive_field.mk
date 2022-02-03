@@ -11,7 +11,7 @@ TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--stack_size 1 \
 	--checkpoint_every 1 \
 	--accumulation_steps 3 \
-	--generate_n_samples 100000
+	--generate_n_samples 20000
 
 DATASET_DEBUG_OPTS?=--datastore_name kinetics-debug \
 	--datastore_version 5 \
@@ -65,13 +65,13 @@ TRAIN_OPTS?=--dataset /opt/datastore \
 	--stack_size 1 \
 	--checkpoint_every 1 \
 	--accumulation_steps 10 \
-	--generate_n_samples 100000
+	--generate_n_samples 20000
 
 INFRA_OPTS?=--scratch_size 512 \
 	--memory 100
 
 DATASET_OPTS?=--datastore_name kinetics-breakdancing \
-	--datastore_version 3 \
+	--datastore_version 2 \
 	--datastore_mount_dir /opt/datastore \
 
 .PHONY: train-gpu
