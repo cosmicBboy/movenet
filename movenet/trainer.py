@@ -272,14 +272,14 @@ def train_model(
 
     # MANUAL LEARNING RATE RANGE TEST
     learning_rates = [
-        3e-7, 1e-6, 3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1,
-        3e-1, 1, 3, 10
+        1e-11, 1e-10, 1e-9, 1e-8, 1e-7,  1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
+        1, 3, 10
     ]
 
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         # lr=config.learning_rate,
-        lr=1e-7,
+        lr=1e-12,
         weight_decay=config.weight_decay,
     )
     scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
