@@ -93,7 +93,7 @@ class TrainingConfig:
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
-    max_learning_rate: float = 0.00003
+    max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
 
     weight_decay: float = 0.0
@@ -619,7 +619,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)
-    parser.add_argument("--learning_rate", type=float, default=0.0003)
+    parser.add_argument("--learning_rate", type=float, default=0.003)
+    parser.add_argument("--max_learning_rate", type=float, default=0.003)
     parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument(
@@ -700,6 +701,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
+        max_learning_rate=args.max_learning_rate,
         generate_n_samples=args.generate_n_samples,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
