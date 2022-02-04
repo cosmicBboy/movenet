@@ -4,7 +4,7 @@ N_DEBUG_EPOCHS?=3
 TRAIN_DEBUG_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_DEBUG_EPOCHS} \
 	--batch_size 1 \
-	--learning_rate 0.00003 \
+	--learning_rate 0.003 \
 	--input_channels 128 \
 	--residual_channels 16 \
 	--layer_size 14 \
@@ -53,10 +53,12 @@ train-debug-gpu:
 
 N_EPOCHS?=3
 
+# value for the learning rate found manually from the following experiment:
+# https://wandb.ai/nielsbantilan/dance2music/runs/9bpg029m?workspace=user-nielsbantilan
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
 	--batch_size 2 \
-	--learning_rate 0.00003 \
+	--learning_rate 0.003 \
 	--pin_memory 1 \
 	--num_workers 4 \
 	--input_channels 128 \
