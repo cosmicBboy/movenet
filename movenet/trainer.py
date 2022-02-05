@@ -155,7 +155,7 @@ def training_step(
             scaler.update()
         else:
             optimizer.step()
-        scheduler.step()
+        # scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
     return loss.detach().cpu().item(), grad_norm
@@ -270,19 +270,26 @@ def train_model(
 
     n_updates = math.ceil(len(dataloader) / config.accumulation_steps)
 
+    # MANUAL LEARNING RATE RANGE TEST
+    learning_rates = [
+        1e-11, 1e-10, 1e-9, 1e-8, 1e-7,  1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
+        1, 3, 10
+    ]
+
     optimizer = getattr(torch.optim, config.optimizer)(
         model.parameters(),
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
-        optimizer,
-        max_lr=config.max_learning_rate,
-        epochs=config.n_epochs,
-        steps_per_epoch=n_updates,
-        pct_start=config.lr_pct_start,
-        three_phase=True,
-    )
+    scheduler = None
+    # scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
+    #     optimizer,
+    #     max_lr=config.max_learning_rate,
+    #     epochs=config.n_epochs,
+    #     steps_per_epoch=n_updates,
+    #     pct_start=config.lr_pct_start,
+    #     three_phase=True,
+    # )
 
     # training loop
     if rank == 0:
@@ -404,6 +411,11 @@ def train_model(
 
             if distributed:
                 dist.barrier()
+
+        # MANUAL UPDATE LEARNING RATE
+        optimizer.param_groups[0]["lr"] = learning_rates[
+            epoch if epoch < len(learning_rates) else -1
+        ]
 
         if rank == 0:
             learning_rate = optimizer.param_groups[0]["lr"]
