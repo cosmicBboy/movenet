@@ -58,7 +58,8 @@ N_EPOCHS?=3
 TRAIN_OPTS?=--dataset /opt/datastore \
 	--n_epochs ${N_EPOCHS} \
 	--batch_size 2 \
-	--max_learning_rate 0.003 \
+	--max_learning_rate 0.0003 \
+	--weight_decay 0.1 \
 	--pin_memory 1 \
 	--num_workers 4 \
 	--input_channels 128 \

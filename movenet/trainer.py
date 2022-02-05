@@ -621,6 +621,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.003)
     parser.add_argument("--max_learning_rate", type=float, default=0.003)
+    parser.add_argument("--weight_decay", type=float, default=0.000)
     parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument(
@@ -702,6 +703,7 @@ if __name__ == "__main__":
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
         max_learning_rate=args.max_learning_rate,
+        weight_decay=args.weight_decay,
         generate_n_samples=args.generate_n_samples,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
