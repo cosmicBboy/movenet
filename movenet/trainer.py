@@ -267,6 +267,7 @@ def train_model(
 
     if rank == 0:
         logger.info(f"Model: {model}")
+        logger.info(f"receptive fields: {model.receptive_fields}")
 
     n_updates = math.ceil(len(dataloader) / config.accumulation_steps)
 
