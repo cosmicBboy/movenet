@@ -155,7 +155,7 @@ def training_step(
             scaler.update()
         else:
             optimizer.step()
-        # scheduler.step()
+        scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
     return loss.detach().cpu().item(), grad_norm
@@ -284,6 +284,10 @@ def train_model(
         three_phase=True,
     )
 
+    logger.info(f"Config: {config}")
+    logger.info(f"Optimizer: {optimizer}")
+    logger.info(f"Scheduler: {scheduler}")
+
     # training loop
     if rank == 0:
         writer = SummaryWriter(config.tensorboard_dir)
@@ -343,7 +347,6 @@ def train_model(
 
         val_loss = 0.0
         val_gen_loss = 0.0
-        sample_output = None
         sample_generated_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
