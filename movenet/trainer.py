@@ -285,6 +285,7 @@ def train_model(
         three_phase=True,
     )
 
+    # logging
     logger.info(f"Config: {config}")
     logger.info(f"Optimizer: {optimizer}")
     logger.info(f"Scheduler: {scheduler}")
