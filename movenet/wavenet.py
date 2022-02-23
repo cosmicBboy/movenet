@@ -183,28 +183,21 @@ class WaveNet(nn.Module):
         generated_audio = torch.zeros(
             shape, dtype=audio.dtype, device=audio.device
         )
-        generated_audio[:, :, 0] = audio[:, :, 0]
+        generated_audio[:, :, :self.receptive_fields] = audio[
+            :, :, :self.receptive_fields
+        ]
 
-        # pad the input signal with enough input values to accommodate the
-        # model's receptive fields
-        for i in range(generated_audio.shape[-1] - 1):
-            left_pad = max(0, self.receptive_fields - i)
-            if left_pad:
-                padded_audio = F.pad(
-                    generated_audio[:, :, :i + 1], (left_pad, 0), "constant", 0
-                )
-                padded_video = F.pad(
-                    video[:, :, :i + 1], (left_pad, 0), "constant", 0
-                )
-            else:
-                start, end = i - self.receptive_fields, i + 1
-                padded_audio = generated_audio[:, :, start: end]
-                padded_video = video[:, :, start: end]
+        # start generating audio at the point where there is sufficient data
+        # in the model's receptive field.
+        for i in range(self.receptive_fields, generated_audio.shape[-1] - 1):
+            start, end = i - self.receptive_fields, i + 1
+            local_audio = generated_audio[:, :, start: end]
+            local_video = video[:, :, start: end]
 
-            padded_audio = self.causal_conv(padded_audio)
+            local_audio = self.causal_conv(local_audio)
             skip_connections = self.residual_conv_stack(
-                input=padded_audio,
-                context=padded_video,
+                input=local_audio,
+                context=local_video,
                 skip_size=self.compute_output_size(audio)
             )
             output = self.dense_conv(
@@ -213,8 +206,8 @@ class WaveNet(nn.Module):
             generated_audio[:, :, [i + 1]] = torch.zeros_like(output).scatter_(
                 1, output.argmax(1, keepdims=True), 1
             )
-            del padded_audio
-            del padded_video
+            del local_audio
+            del local_video
             del skip_connections
             del output
 

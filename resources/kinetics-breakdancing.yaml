@@ -1,0 +1,36 @@
+# This file contains a subset of the kinetics dataset representing high-quality
+# dance videos. These are videos where:
+# - The video and audio quality is good.
+# - The dancer and music are aligned.
+train:
+  breakdancing:
+    - _9J3AyBlnPU
+    - 0EkwOZ7nesY
+    - 2wPzE8sTeLQ
+    - 3icirrYjrfM
+    - 4DQBbWCqPEM
+    - 4FwOffyb5Q8
+    - 29LWQBYKZIQ
+    - c52lY96Z0H4
+    - CgwACmRv3Zc
+    - Df-zWhQhC50
+    - dU37DLDWY98
+    - DXy_gJIP-3o
+    - gsrgQWls9DE
+    - h8C1ykDdg9M
+    - Kq7CdbM3SKM
+    - M8k67cyx3-E
+    - pzf0ZfSfDgM
+    - Q-_GLTJ2s9c
+    - vG9QXVz4FE0
+    - WxEKcxr3pU4
+    - xJg_FvMe4hE
+    - y2O1UT6EEEE
+    - yJf9j_2Xe9g
+    - z9e4947VJNE
+    - zkyRFux7BWc
+valid:
+  breakdancing:
+    - ATdZsuVa9ss
+    - hxHJqkFDSVE
+    - MZmI_j8KUDU
