@@ -63,7 +63,8 @@ class ModelConfig:
     layer_size: int = 2
     stack_size: int = 2
     input_channels: int = 256
-    residual_channels: int = 512
+    residual_channels: int = 16
+    skip_channels: int = 16
 
 
 @dataclass_json
@@ -624,6 +625,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)
+    parser.add_argument("--skip_channels", type=int, default=8)
     parser.add_argument("--layer_size", type=int, default=3)
     parser.add_argument("--stack_size", type=int, default=3)
     parser.add_argument("--dist_backend", type=str, default="nccl")
@@ -683,6 +685,7 @@ if __name__ == "__main__":
         model_config=ModelConfig(
             input_channels=args.input_channels,
             residual_channels=args.residual_channels,
+            skip_channels=args.skip_channels,
             layer_size=args.layer_size,
             stack_size=args.stack_size,
         ),

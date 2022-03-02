@@ -113,10 +113,10 @@ class ResidualConvStack(nn.Module):
 
 
 class DenseConv(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv1 = nn.Conv1d(channels, channels, 1)
-        self.conv2 = nn.Conv1d(channels, channels, 1)
+        self.conv1 = nn.Conv1d(in_channels, out_channels, 1)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, 1)
 
     def forward(self, x):
         x = self.conv1(F.relu(x))

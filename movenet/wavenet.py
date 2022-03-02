@@ -78,7 +78,8 @@ class WaveNet(nn.Module):
         layer_size: int,
         stack_size: int,
         input_channels: int,  # audio input channels
-        residual_channels: int,
+        residual_channels: int = 16,
+        skip_channels: int = 16,
         video_in_channels: int = 1,
     ):
         super().__init__()
@@ -88,6 +89,7 @@ class WaveNet(nn.Module):
         self.stack_size = stack_size
         self.input_channels = input_channels
         self.residual_channels = residual_channels
+        self.skip_channels = skip_channels
 
         # modules
         self.video_conv = nn.Conv3d(
@@ -117,9 +119,9 @@ class WaveNet(nn.Module):
         ])
         self.causal_conv = CausalConv1d(input_channels, residual_channels)
         self.residual_conv_stack = ResidualConvStack(
-            layer_size, stack_size, residual_channels, input_channels,
+            layer_size, stack_size, residual_channels, skip_channels,
         )
-        self.dense_conv = DenseConv(input_channels)
+        self.dense_conv = DenseConv(skip_channels, input_channels)
 
     @property
     @functools.lru_cache(maxsize=None)
