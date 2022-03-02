@@ -17,25 +17,16 @@ import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.parallel.distributed import DistributedDataParallel
 import torch.optim
 import torchaudio
 import torchvision.io
 import wandb
 from torch import distributed as dist
 from torch.utils.tensorboard import SummaryWriter
-from torchaudio.functional import mu_law_encoding, mu_law_decoding
-from torchtyping import TensorType
+from torchaudio.functional import mu_law_decoding
 
 from movenet import dataset
-from movenet.wavenet import (
-    WaveNet,
-    AudioTensor,
-    VideoTensor,
-    VIDEO_KERNEL_SIZE,
-    MAX_AUDIO_FRAMES,
-    MAX_VIDEO_FRAMES,
-)
+from movenet.wavenet import WaveNet
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
@@ -482,15 +473,6 @@ def train_model(
                     "generated_audio",  # generated from scratch
                 ]
             )
-            try:
-                zip(
-                    sample_fps,
-                    sample_info,
-                    synth_output_samples,
-                    gen_output_samples,
-                )
-            except:
-                import ipdb; ipdb.set_trace()
 
             for i, (sample_fp, info, synth_sample, gen_sample) in enumerate(
                 zip(

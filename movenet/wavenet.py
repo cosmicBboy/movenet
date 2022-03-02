@@ -5,6 +5,7 @@ https://github.com/golbin/WaveNet/blob/master/wavenet/networks.py
 """
 
 import functools
+import math
 from typing import Optional
 
 import numpy as np
@@ -22,9 +23,11 @@ from movenet.modules import (
 AudioTensor = TensorType["batch", "channels", "frames"]
 VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
-MAX_AUDIO_FRAMES = 400000
-MAX_VIDEO_FRAMES = 400
-VIDEO_KERNEL_SIZE = (1, 128, 128)
+# this is hard-coded for now... kinetics dataset clips are 10 seconds, so for
+# 16000 frames per second max audio frames should be 160000
+MAX_AUDIO_FRAMES = 160000
+MAX_VIDEO_FRAMES = 160
+VIDEO_KERNEL_SIZE = (1, 64, 64)
 
 UPSAMPLE_STRIDE = 10
 
@@ -98,7 +101,7 @@ class WaveNet(nn.Module):
         upsample_sizes = np.geomspace(
             MAX_VIDEO_FRAMES,
             MAX_AUDIO_FRAMES,
-            num=int(np.log10(MAX_AUDIO_FRAMES / MAX_VIDEO_FRAMES) + 1)
+            num=math.ceil(np.log10(MAX_AUDIO_FRAMES / MAX_VIDEO_FRAMES) + 1)
         ).astype(int)
 
         self.video_transpose = nn.Sequential(*[
@@ -192,12 +195,10 @@ class WaveNet(nn.Module):
         for i in range(self.receptive_fields, generated_audio.shape[-1] - 1):
             start, end = i - self.receptive_fields, i + 1
             local_audio = generated_audio[:, :, start: end]
-            local_video = video[:, :, start: end]
 
-            local_audio = self.causal_conv(local_audio)
             skip_connections = self.residual_conv_stack(
-                input=local_audio,
-                context=local_video,
+                input=self.causal_conv(local_audio),
+                context=video[:, :, start: end],
                 skip_size=self.compute_output_size(audio)
             )
             output = self.dense_conv(
@@ -207,7 +208,6 @@ class WaveNet(nn.Module):
                 1, output.argmax(1, keepdims=True), 1
             )
             del local_audio
-            del local_video
             del skip_connections
             del output
 
