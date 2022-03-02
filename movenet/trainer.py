@@ -289,6 +289,10 @@ def train_model(
     scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
 
     for epoch in range(config.n_epochs):
+        create_checkpoint = (
+            epoch % config.checkpoint_every == 0
+            or epoch == config.n_epochs - 1
+        )
 
         if distributed:
             dataloader.sampler.set_epoch(epoch)
@@ -430,12 +434,12 @@ def train_model(
                     "learning_rate": learning_rate,
                     "epoch": epoch,
                 },
-                commit=not (epoch % config.checkpoint_every == 0)
+                commit=not create_checkpoint
             )
 
         fp = config.model_output_path / "checkpoints" / str(epoch)
         checkpoint_path = fp / "model.pth"
-        if epoch % config.checkpoint_every == 0 and rank == 0:
+        if create_checkpoint and rank == 0:
             logger.info(f"creating checkpoint at epoch {epoch}")
 
             logger.info(f"checkpoint path: {fp}")
