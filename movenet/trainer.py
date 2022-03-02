@@ -31,7 +31,7 @@ from movenet.wavenet import WaveNet
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 GRID_EXPERIMENT_NAME = os.getenv("GRID_EXPERIMENT_NAME", None)
-WANDB_PROJECT = "dance2music-local"
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "dance2music-local")
 if GRID_EXPERIMENT_NAME:
     WANDB_PROJECT = "dance2music"
 
