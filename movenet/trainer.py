@@ -150,7 +150,7 @@ def training_step(
         scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
-    return loss.detach().cpu().item(), grad_norm
+    return loss.detach().cpu().item(), grad_norm, output
 
 
 @torch.no_grad()
@@ -209,7 +209,10 @@ def train_model(
 
     # sample one batch to save for inspecting predictions, make sure it's
     # consistent over the epochs
-    sample_batch_number = (
+    train_sample_batch_number = (
+        torch.randint(len(valid_dataloader), (1, )).detach() + 1
+    )
+    valid_sample_batch_number = (
         torch.randint(len(valid_dataloader), (1, )).detach() + 1
     )
 
@@ -302,9 +305,9 @@ def train_model(
         batch_train_loss = []
         logger.info(f"starting training loop for epoch {epoch}")
         total_n_steps = config.n_steps_per_epoch or len(dataloader)
-        for step, (audio, video, contexts, fps, _) in enumerate(dataloader, 1):
+        for step, (audio, video, contexts, fps, info) in enumerate(dataloader, 1):
             last_step = step == total_n_steps
-            loss, grad_norm = training_step(
+            loss, grad_norm, train_output = training_step(
                 config, step, model, optimizer, scheduler,
                 audio, video, rank, scaler, last_step=last_step
             )
@@ -313,6 +316,17 @@ def train_model(
 
             prog = step / total_n_steps
             total = epoch * total_n_steps + step
+
+            if rank == 0 and step == train_sample_batch_number:
+                train_sample_synth_output = train_output
+
+                if torch.cuda.is_available():
+                    train_sample_synth_output = train_sample_synth_output.to(
+                        rank
+                    )
+                train_sample_fps = fps
+                train_sample_info = info
+
             if (
                 rank == 0
                 and (step % config.accumulation_steps == 0 or last_step)
@@ -348,7 +362,7 @@ def train_model(
         sample_generated_output = None
         sample_fps = None
         logger.info(f"starting validation loop for epoch {epoch}")
-        logger.info(f"sample_batch_number: {sample_batch_number}")
+        logger.info(f"valid_sample_batch_number: {valid_sample_batch_number}")
 
         # only generate audio samples for last epoch
         generate_audio_samples = epoch == config.n_epochs - 1
@@ -358,7 +372,7 @@ def train_model(
             valid_dataloader, 1
         ):
             n_samples = None
-            if generate_audio_samples and step == sample_batch_number:
+            if generate_audio_samples and step == valid_sample_batch_number:
                 n_samples = (
                     config.generate_n_samples
                     or audio.shape[-1] - model.receptive_fields
@@ -391,7 +405,7 @@ def train_model(
                     "val_step": total,
                 })
 
-            if rank == 0 and step == sample_batch_number:
+            if rank == 0 and step == valid_sample_batch_number:
                 sample_synth_output = output
                 if generate_audio_samples:
                     sample_generated_output = generated_output
@@ -452,6 +466,14 @@ def train_model(
             )
 
             logger.info("decoding output samples")
+
+            # training set samples
+            train_synth_output_samples = mu_law_decoding(
+                train_sample_synth_output.argmax(1),
+                config.model_config.input_channels
+            ).to("cpu")
+
+            # validation set samples
             synth_output_samples = mu_law_decoding(
                 sample_synth_output.argmax(1),
                 config.model_config.input_channels
@@ -465,8 +487,11 @@ def train_model(
                     config.model_config.input_channels
                 ).to("cpu")
                 torch.save(gen_output_samples, fp / "gen_output_samples.pth")
+
+                train_gen_output_samples = torch.zeros_like(gen_output_samples)
             else:
                 gen_output_samples = [None] * config.batch_size
+                train_gen_output_samples = [None] * config.batch_size
 
             checkpoint_samples = wandb.Table(
                 columns=[
@@ -479,12 +504,32 @@ def train_model(
                 ]
             )
 
-            for i, (sample_fp, info, synth_sample, gen_sample) in enumerate(
+            # consolidate train and validation samples
+            all_sample_fps = [*train_sample_fps, *sample_fps]
+            all_sample_info = [*train_sample_info, *sample_info]
+            all_synth_output_samples = torch.cat([
+                train_synth_output_samples, synth_output_samples
+            ])
+            if generate_audio_samples:
+                all_gen_output_samples = torch.cat([
+                    train_gen_output_samples, gen_output_samples,
+                ])
+            else:
+                all_gen_output_samples = [
+                    *train_gen_output_samples, *gen_output_samples
+                ]
+            all_sample_splits = (
+                ["train"] * config.batch_size
+                + ["valid"] * config.batch_size
+            )
+
+            for i, (split, sample_fp, info, synth_sample, gen_sample) in enumerate(
                 zip(
-                    sample_fps,
-                    sample_info,
-                    synth_output_samples,
-                    gen_output_samples,
+                    all_sample_splits,
+                    all_sample_fps,
+                    all_sample_info,
+                    all_synth_output_samples,
+                    all_gen_output_samples,
                 )
             ):
                 sample_fp = Path(sample_fp)
@@ -551,7 +596,9 @@ def train_model(
                     wandb.Audio(str(gen_audio_fp), caption=caption),
                 ]
                 checkpoint_samples.add_data(
-                    epoch, sample_fp.stem, *checkpoint_data
+                    epoch,
+                    f"{split} split: {sample_fp.stem}",
+                    *checkpoint_data
                 )
 
             wandb.run.log(
