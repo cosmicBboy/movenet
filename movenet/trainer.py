@@ -30,11 +30,6 @@ from movenet.wavenet import WaveNet
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
-GRID_EXPERIMENT_NAME = os.getenv("GRID_EXPERIMENT_NAME", None)
-WANDB_PROJECT = os.getenv("WANDB_PROJECT", "dance2music-local")
-if GRID_EXPERIMENT_NAME:
-    WANDB_PROJECT = "dance2music"
-
 CLIP_GRAD = 10.0
 
 
@@ -50,8 +45,14 @@ def configure_logging():
 
 def wandb_setup():
     wandb.login()
+    is_grid_experiment = os.getenv("GRID_EXPERIMENT_NAME", None) is not None
+    project = (
+        "dance2music"
+        if is_grid_experiment
+        else os.getenv("WANDB_PROJECT", "dance2music-local")
+    )
     wandb.init(
-        project=WANDB_PROJECT,
+        project=project,
         entity="nielsbantilan",
         name=os.getenv("GRID_EXPERIMENT_NAME", None)
     )
