@@ -13,6 +13,7 @@ torchaudio==0.10.0
 torchtyping==0.1.2
 typeguard
 typing-extensions==3.7.4.3
+pytorch-lightning
 pytorchvideo==0.1.2
 wandb
 opencv-python-headless==4.5.3.56
