@@ -7,10 +7,11 @@ import wandb
 from torchaudio.functional import mu_law_decoding
 from pytorch_lightning.callbacks import Callback
 
+
 COLUMNS = [
+    "split",
     "epoch",
     "batch_idx",
-    "dataloader_idx",
     "fp",
     "video",
     "origin_audio",
@@ -19,13 +20,30 @@ COLUMNS = [
 ]
  
 class LogSamplesCallback(Callback):
-    
+
+    def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx
+    ):
+        if batch_idx > 0:
+            return
+
+        self.log_samples(
+            "train", trainer, pl_module, outputs, batch, batch_idx
+        )
+
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         if batch_idx > 0:
             return
 
+        self.log_samples(
+            "validation", trainer, pl_module, outputs, batch, batch_idx
+        )
+    
+    def log_samples(
+        self, split, trainer, pl_module, outputs, batch, batch_idx
+    ):
         config = pl_module.config
         _, _, _, fps, infos = batch
 
@@ -35,7 +53,7 @@ class LogSamplesCallback(Callback):
         )
 
         gen_outputs = [None] * len(fps)
-        if outputs["generated_output"] is not None:
+        if outputs.get("generated_output", None) is not None:
             gen_outputs = mu_law_decoding(
                 outputs["generated_output"].argmax(1),
                 config.model_config.input_channels
@@ -55,6 +73,7 @@ class LogSamplesCallback(Callback):
                 )
             )
 
+            gen_sample_rate = vid_info["audio_fps"]
             if gen_output is not None:
                 gen_audio = gen_output
                 gen_sample_rate = len(gen_output)
@@ -71,9 +90,9 @@ class LogSamplesCallback(Callback):
                 gen_audio = torch.zeros_like(pred_audio)
 
             data.append([
+                split,
                 trainer.current_epoch,
                 batch_idx,
-                dataloader_idx,
                 fp,
                 wandb.Video(fp),
                 wandb.Audio(orig_audio[0], sample_rate=vid_info["audio_fps"]),

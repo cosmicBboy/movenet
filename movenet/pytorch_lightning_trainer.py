@@ -37,7 +37,10 @@ class Dance2Music(LightningModule):
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
         self.log("train_loss", loss)
-        return loss
+        return {
+            "loss": loss,
+            "output": output,
+        }
 
     def validation_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
