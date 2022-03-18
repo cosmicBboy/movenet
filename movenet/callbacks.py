@@ -48,14 +48,14 @@ class LogSamplesCallback(Callback):
         _, _, _, fps, infos = batch
 
         pred_outputs = mu_law_decoding(
-            outputs["output"].argmax(1),
+            outputs["output"].cpu().argmax(1),
             config.model_config.input_channels
         )
 
         gen_outputs = [None] * len(fps)
         if outputs.get("generated_output", None) is not None:
             gen_outputs = mu_law_decoding(
-                outputs["generated_output"].argmax(1),
+                outputs["generated_output"].cpu().argmax(1),
                 config.model_config.input_channels
             )
 
