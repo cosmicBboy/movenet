@@ -8,7 +8,7 @@ from movenet.config import TrainingConfig, config_from_args, arg_parser
 from movenet.dataset import get_dataloader
 from movenet.wavenet import WaveNet
 
-from pytorch_lightning import LightningModule
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import WandbLogger
 
 
@@ -105,8 +105,6 @@ def train_model(dataset: str, config: TrainingConfig, wandb_project: str):
 
 
 if __name__ == "__main__":
-    from pytorch_lightning import Trainer
-
     parser = arg_parser()
     args = parser.parse_args()
     config = config_from_args(args)
