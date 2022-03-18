@@ -16,6 +16,7 @@ class Dance2Music(LightningModule):
 
     def __init__(self, dataset_fp: str, config: TrainingConfig):
         super().__init__()
+        self.learning_rate = config.learning_rate
         self.dataset_fp = dataset_fp
         self.config = config
         self.model = WaveNet(**asdict(config.model_config))
@@ -23,7 +24,7 @@ class Dance2Music(LightningModule):
     def configure_optimizers(self):
         return getattr(torch.optim, self.config.optimizer)(
             self.model.parameters(),
-            lr=self.config.learning_rate,
+            lr=self.learning_rate,
             weight_decay=self.config.weight_decay,
         )
 
