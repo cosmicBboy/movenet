@@ -86,16 +86,10 @@ class Dance2Music(LightningModule):
         )
 
 
-if __name__ == "__main__":
-    from pytorch_lightning import Trainer
-
-    parser = arg_parser()
-    args = parser.parse_args()
-    config = config_from_args(args)
-
-    model = Dance2Music(args.dataset, config)
+def train_model(dataset: str, config: TrainingConfig, wandb_project: str):
+    model = Dance2Music(dataset, config)
     wandb_logger = WandbLogger(
-        project="dance2music-pl-testing",
+        project=wandb_project,
         log_model="all",
     )
     trainer = Trainer(
@@ -108,3 +102,13 @@ if __name__ == "__main__":
     )
     wandb_logger.watch(model, log="all", log_freq=1)
     trainer.fit(model=model)
+
+
+if __name__ == "__main__":
+    from pytorch_lightning import Trainer
+
+    parser = arg_parser()
+    args = parser.parse_args()
+    config = config_from_args(args)
+
+    train_model(args.dataset, config, "dance2music-pl-testing")
