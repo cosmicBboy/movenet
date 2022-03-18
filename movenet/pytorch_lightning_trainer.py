@@ -33,6 +33,8 @@ class Dance2Music(LightningModule):
 
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
+        # need to do this manually since batch contains non-tensors
+        audio, video = audio.to(self.device), video.to(self.device)
         output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
@@ -45,6 +47,8 @@ class Dance2Music(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
+        # need to do this manually since batch contains non-tensors
+        audio, video = audio.to(self.device), video.to(self.device)
         output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
