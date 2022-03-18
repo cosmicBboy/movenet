@@ -24,7 +24,7 @@ class LogSamplesCallback(Callback):
     def on_train_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx
     ):
-        if batch_idx > 0:
+        if batch_idx < trainer.num_val_batches[0] - 1:
             return
 
         self.log_samples(
@@ -34,8 +34,20 @@ class LogSamplesCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if batch_idx > 0:
+        if batch_idx < trainer.num_val_batches[0] - 1:
             return
+
+        audio, video, *_ = batch
+        # need to do this manually since batch contains non-tensors
+        audio, video = audio.to(pl_module.device), video.to(pl_module.device)
+
+        generated_output = pl_module(
+            audio,
+            video,
+            generate=True,
+            n_samples=pl_module.config.generate_n_samples,
+        )
+        outputs["generated_output"] = generated_output
 
         self.log_samples(
             "validation", trainer, pl_module, outputs, batch, batch_idx

@@ -55,19 +55,7 @@ class Dance2Music(LightningModule):
         loss = F.cross_entropy(output, target)
         self.log("val_loss", loss)
 
-        generated_output = None
-        if batch_idx == 0:
-            generated_output = self(
-                audio,
-                video,
-                generate=True,
-                n_samples=self.config.generate_n_samples,
-            )
-
-        return {
-            "output": output,
-            "generated_output": generated_output,
-        }
+        return {"output": output}
 
     def train_dataloader(self):
         return get_dataloader(
