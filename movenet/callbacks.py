@@ -7,6 +7,8 @@ import wandb
 from torchaudio.functional import mu_law_decoding
 from pytorch_lightning.callbacks import Callback
 
+from movenet.wavenet import MAX_AUDIO_FRAMES
+
 
 COLUMNS = [
     "split",
@@ -81,23 +83,31 @@ class LogSamplesCallback(Callback):
                 librosa.resample(
                     pred_output.numpy(),
                     pred_output.shape[0],
-                    vid_info["audio_fps"],
+                    orig_audio.shape[1],
                 )
             )
 
-            gen_sample_rate = vid_info["audio_fps"]
             if gen_output is not None:
                 gen_audio = gen_output
-                gen_sample_rate = len(gen_output)
-                if not pl_module.config.generate_n_samples:
-                    gen_sample_rate = vid_info["audio_fps"]
-                    gen_audio = torch.from_numpy(
-                        librosa.resample(
-                            gen_output.numpy(),
-                            gen_output.shape[0],
-                            gen_sample_rate,
-                        )
+                if pl_module.config.generate_n_samples:
+                    # scale number of samples in downsampled data space
+                    # (to MAX_AUDIO_FRAMES) to number of sample in the original
+                    # audio
+                    target_dim = (
+                        pl_module.config.generate_n_samples
+                        / MAX_AUDIO_FRAMES
+                        * orig_audio.shape[1]
                     )
+                else:
+                    # upsample to original audio dims
+                    target_dim = orig_audio.shape[1]
+                gen_audio = torch.from_numpy(
+                    librosa.resample(
+                        gen_output.numpy(),
+                        gen_output.shape[0],
+                        target_dim,
+                    )
+                )
             else:
                 gen_audio = torch.zeros_like(pred_audio)
 
@@ -109,7 +119,7 @@ class LogSamplesCallback(Callback):
                 wandb.Video(fp),
                 wandb.Audio(orig_audio[0], sample_rate=vid_info["audio_fps"]),
                 wandb.Audio(pred_audio, sample_rate=vid_info["audio_fps"]),
-                wandb.Audio(gen_audio, sample_rate=gen_sample_rate),
+                wandb.Audio(gen_audio, sample_rate=vid_info["audio_fps"]),
             ])
 
         pl_module.logger.log_table(
