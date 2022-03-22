@@ -5,6 +5,7 @@ import torch
 import torchvision.io
 import wandb
 from torchaudio.functional import mu_law_decoding
+from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import Callback
 
 from movenet.wavenet import MAX_AUDIO_FRAMES
@@ -23,10 +24,13 @@ COLUMNS = [
  
 class LogSamplesCallback(Callback):
 
+    def __init__(self, log_every_n_epochs: int = 10):
+        self.log_every_n_epochs = log_every_n_epochs
+
     def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx
+        self, trainer: Trainer, pl_module, outputs, batch, batch_idx
     ):
-        if batch_idx < trainer.num_val_batches[0] - 1:
+        if trainer.current_epoch % self.log_every_n_epochs != 0:
             return
 
         self.log_samples(
@@ -36,7 +40,7 @@ class LogSamplesCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if batch_idx < trainer.num_val_batches[0] - 1:
+        if trainer.current_epoch % self.log_every_n_epochs != 0:
             return
 
         audio, video, *_ = batch

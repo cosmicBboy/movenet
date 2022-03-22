@@ -91,7 +91,7 @@ def train_model(dataset: str, config: TrainingConfig, wandb_project: str):
         logger=wandb_logger,
         log_every_n_steps=1,
         num_sanity_val_steps=1,
-        callbacks=[LogSamplesCallback()],
+        callbacks=[LogSamplesCallback(log_every_n_epochs=10)],
     )
     wandb_logger.watch(model, log="all", log_freq=1)
     trainer.fit(model=model)
