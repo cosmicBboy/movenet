@@ -1,5 +1,10 @@
 from dataclasses import asdict
-from typing import Literal, Optional
+from typing import Optional
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 import torch
 import torch.nn.functional as F
