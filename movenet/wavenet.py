@@ -19,9 +19,8 @@ from movenet.modules import (
     ResidualConvStack,
     DenseConv,
 )
+from movenet.types import AudioTensor, VideoTensor
 
-AudioTensor = TensorType["batch", "channels", "frames"]
-VideoTensor = TensorType["batch", "frames", "height", "width", "channels"]
 
 # this is hard-coded for now... kinetics dataset clips are 10 seconds, so for
 # 16000 frames per second max audio frames should be 160000
@@ -150,20 +149,24 @@ class WaveNet(nn.Module):
     def forward(
         self,
         audio: AudioTensor,
-        video: VideoTensor,
+        video: Optional[VideoTensor],
         global_features: TensorType = None,
         generate: bool = False,
         n_samples: Optional[int] = None,
     ):
         if generate:
             return self.generate(audio, video, global_features, n_samples)
-        video = self.upsample_video(video)
+
+        video = video if video is None else self.upsample_video(video)
         audio = self.causal_conv(audio)
         # TODO: apply causal_conv to video signal as well?
-        assert video.size() == audio.size(), (
-            "expected video and audio tensors to have equal sizes, found "
-            f"{video.size()}, {audio.size()}"
-        )
+
+        if video is not None:
+            assert video.size() == audio.size(), (
+                "expected video and audio tensors to have equal sizes, found "
+                f"{video.size()}, {audio.size()}"
+            )
+
         skip_connections = self.residual_conv_stack(
             input=audio,
             context=video,
@@ -175,11 +178,11 @@ class WaveNet(nn.Module):
     def generate(
         self,
         audio: AudioTensor,
-        video: VideoTensor,
+        video: Optional[VideoTensor],
         global_features: TensorType = None,
         n_samples: Optional[int] = None,
     ):
-        video = self.upsample_video(video)
+        video = video if video is None else self.upsample_video(video)
 
         shape = audio.shape if n_samples is None else (
             audio.shape[0], audio.shape[1], n_samples
@@ -200,7 +203,7 @@ class WaveNet(nn.Module):
 
             skip_connections = self.residual_conv_stack(
                 input=self.causal_conv(local_audio),
-                context=video[:, :, start: end],
+                context=video if video is None else video[:, :, start: end],
                 skip_size=self.compute_output_size(audio)
             )
             output = self.dense_conv(

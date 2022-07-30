@@ -1,8 +1,10 @@
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
+from movenet.types import AudioTensor, VideoTensor
 
 
 class ConvTranspose2d(nn.Module):
@@ -63,9 +65,17 @@ class GatedResidualConv1d(nn.Module):
         self.conv_residual = nn.Conv1d(residual_channels, residual_channels, 1)
         self.conv_skip = nn.Conv1d(residual_channels, skip_channels, 1)
 
-    def forward(self, input, context, skip_size):
-        f = self.conv_filter(input) + self.context_conv_filter(context)
-        g = self.conv_gate(input) + self.context_conv_gate(context)
+    def forward(
+        self,
+        input: AudioTensor,
+        context: Optional[VideoTensor],
+        skip_size,
+    ):
+        f, g = self.conv_filter(input), self.conv_gate(input)
+
+        if context is not None:
+            f += self.context_conv_filter(context)
+            g += self.context_conv_gate(context)
 
         # pixel-cnn gating
         gated = torch.tanh(f) * torch.sigmoid(g)
@@ -103,7 +113,12 @@ class ResidualConvStack(nn.Module):
             for x in range(self.layer_size)
         ]
 
-    def forward(self, input, context, skip_size):
+    def forward(
+        self,
+        input: AudioTensor,
+        context: Optional[VideoTensor],
+        skip_size: int,
+    ):
         output = input
         skip_connections = []
         for gated_residual_conv in self.conv_layers:

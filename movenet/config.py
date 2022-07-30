@@ -20,7 +20,10 @@ class ModelConfig:
 @dataclass_json
 @dataclass
 class TrainingConfig:
+    # model hyperparameters
     model_config: ModelConfig = ModelConfig()
+
+    # training parameters
     batch_size: int = 3
     checkpoint_every: int = 25
     optimizer: str = "AdamW"
@@ -30,6 +33,10 @@ class TrainingConfig:
     num_workers: int = 0
     val_num_workers: int = 0
     pin_memory: bool = False
+    weight_decay: float = 0.0
+    n_epochs: int = 100
+    n_steps_per_epoch: Optional[int] = None
+    use_video: bool = True
 
     # sample generation
     generate_n_samples: Optional[int] = None
@@ -39,11 +46,11 @@ class TrainingConfig:
     max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
 
-    weight_decay: float = 0.0
-    n_epochs: int = 100
-    n_steps_per_epoch: Optional[int] = None
+    # distributed compute
     dist_backend: str = None
     dist_port: str = "8888"
+
+    # model IO
     pretrained_model_path: Optional[Path] = field(
         default=None,
         metadata=config(
@@ -54,6 +61,8 @@ class TrainingConfig:
     model_output_path: Path = field(
         default="models", metadata=config(encoder=str, decoder=Path),
     )
+
+    # logging
     tensorboard_dir: Path = field(
         default="tensorboard_logs", metadata=config(encoder=str, decoder=Path),
     )
@@ -72,14 +81,15 @@ def config_from_args(args) -> TrainingConfig:
         checkpoint_every=args.checkpoint_every,
         learning_rate=args.learning_rate,
         max_learning_rate=args.max_learning_rate,
-        weight_decay=args.weight_decay,
         generate_n_samples=args.generate_n_samples,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
         val_num_workers=args.val_num_workers,
         pin_memory=args.pin_memory,
+        weight_decay=args.weight_decay,
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
+        use_video=args.use_video,
         dist_backend=args.dist_backend,
         dist_port=args.dist_port,
         pretrained_model_path=(
@@ -112,6 +122,11 @@ def arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_steps_per_epoch", type=int, default=None)
+    parser.add_argument(
+        "--use_video",
+        type=lambda x: bool(int(x)),
+        default=True,
+    )
     parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)
@@ -142,6 +157,6 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--grid_user_name", type=str, default="")
     parser.add_argument("--grid_api_key", type=str, default="")
     parser.add_argument("--logger", default=None, type=str, choices=["wandb"])
-    parser.add_argument("--log-samples", default=False, action="store",)
+    parser.add_argument("--log_samples", default=False, action="store",)
     parser.add_argument("--wandb_api_key", type=str, default="")
     return parser

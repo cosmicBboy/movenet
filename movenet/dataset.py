@@ -2,6 +2,7 @@
 
 import logging
 from collections import Counter
+from functools import partial
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
 from typing import List, NamedTuple
@@ -57,15 +58,23 @@ class Example(NamedTuple):
 
 class KineticsDataset(torch.utils.data.Dataset):
 
-    def __init__(self, filepath: str, input_channels: int, train=True):
+    def __init__(
+        self,
+        filepath: str,
+        input_channels: int,
+        train: bool = True,
+        use_video: bool = True,
+    ):
         self.filepath = Path(filepath)
         self.train = train
         self.input_channels = input_channels
+        self.use_video = use_video
 
         # here we use the class label in the kinetics dataset as global
         # context
         self.contexts = [x.name for x in self.root_path.glob("*")]
         logger.info(f"dataset train={train} with contexts: {self.contexts}")
+        logger.info(f"use video data: {use_video}")
 
         index = []
         for context in self.contexts:
@@ -97,11 +106,13 @@ class KineticsDataset(torch.utils.data.Dataset):
         return Example(
             self.index[item].context,
             self.index[item].filepath,
-            *read_video(self.index[item].filepath, self.input_channels),
+            *read_video(
+                self.index[item].filepath, self.input_channels, self.use_video,
+            ),
         )
 
 
-def read_video(filepath, input_channels):
+def read_video(filepath, input_channels, use_video: bool):
     video, audio, info = torchvision.io.read_video(filepath)
     # permute to: frames x channels x height x width
     info.update({
@@ -110,7 +121,8 @@ def read_video(filepath, input_channels):
     })
     if video.shape[0] == 0:
         return None, None, info
-    video = resize_video(video.permute(0, 3, 1, 2))
+
+    video = resize_video(video.permute(0, 3, 1, 2)) if use_video else None
     audio = one_hot_encode_audio(resample_audio(audio), input_channels)
     return video, audio, info
 
@@ -122,9 +134,15 @@ def get_dataloader(
     train: bool = True,
     rank: int = 0,
     world_size: int = 0,
+    use_video: bool = True,
     **kwargs,
 ):
-    dataset = KineticsDataset(filepath, input_channels, train=train)
+    dataset = KineticsDataset(
+        filepath,
+        input_channels,
+        train=train,
+        use_video=use_video,
+    )
     sampler = None
     if world_size > 1:
         sampler = torch.utils.data.distributed.DistributedSampler(
@@ -138,7 +156,7 @@ def get_dataloader(
     return torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        collate_fn=make_batch,
+        collate_fn=partial(make_batch, use_video),
         sampler=sampler,
         **kwargs
     )
@@ -154,7 +172,8 @@ class Batch:
 
     def pin_memory(self):
         self.audio = self.audio.pin_memory()
-        self.video = self.video.pin_memory()
+        if self.video is not None:
+            self.video = self.video.pin_memory()
         return self
 
     def __iter__(self):
@@ -163,13 +182,13 @@ class Batch:
         )
 
 
-def make_batch(examples: List[Example]):
+def make_batch(use_video: bool, examples: List[Example]):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
 
     audio, video, contexts, filepaths, info = [], [], [], [], []
 
     for example in examples:
-        if example.video is None:
+        if example.video is None and example.audio is None:
             continue
         video.append(example.video)
         audio.append(example.audio)
@@ -183,7 +202,11 @@ def make_batch(examples: List[Example]):
         )
 
     return Batch(
-        torch.stack(audio), torch.stack(video), contexts, filepaths, info
+        torch.stack(audio),
+        torch.stack(video) if use_video else None,
+        contexts,
+        filepaths,
+        info,
     )
 
 
