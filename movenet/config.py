@@ -100,8 +100,8 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max_learning_rate", type=float, default=0.003)
     parser.add_argument("--weight_decay", type=float, default=0.000)
     parser.add_argument("--accumulation_steps", type=int, default=1)
-    parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--val_num_workers", type=int, default=0)
+    parser.add_argument("--num_workers", type=int, default=1)
+    parser.add_argument("--val_num_workers", type=int, default=1)
     parser.add_argument(
         "--pin_memory", type=lambda x: bool(int(x)), default=False,
     )
@@ -141,5 +141,7 @@ def arg_parser() -> argparse.ArgumentParser:
     # temporary hack until grid environment issue is solved
     parser.add_argument("--grid_user_name", type=str, default="")
     parser.add_argument("--grid_api_key", type=str, default="")
+    parser.add_argument("--logger", default=None, type=str, choices=["wandb"])
+    parser.add_argument("--log-samples", default=False, action="store",)
     parser.add_argument("--wandb_api_key", type=str, default="")
     return parser

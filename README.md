@@ -57,20 +57,32 @@ system.
 
 ## Download the Datasets
 
-### Kinetics Dataset
+### Creating Kinetics Dataset
 
 
 Clone the downloader
-```
+
+```bash
 git clone https://github.com/hai-labs/kinetics-downloader
 ```
 
-Download the dataset
-```
+If you want to reconstitute a fresh dataset, download it with:
+```bash
 cd kinetics-downloader
 python download.py --categories "dancing" --num-workers <NUM_WORKERS> -v
 cd ..
 cp -R kinetics-downloader/dataset datasets/kinetics
+```
+
+### Downloading the Data
+
+You can also download the datasets from [google drive](https://drive.google.com/drive/folders/1JDt4QapusLD9AH7ZxeW88gaFmg1Hvix8?usp=sharing). For example you can dump the
+`kinetics_debug` directory into `dataset/kinetics_debug`.
+
+### Running the Trainer
+
+```bash
+python movenet/pytorch_lightning_trainer.py --dataset datasets/kinetics_debug --n_epochs 1
 ```
 
 ### Running an Experiment on `gridai`
@@ -78,7 +90,7 @@ cp -R kinetics-downloader/dataset datasets/kinetics
 The `experiments` directory contains makefiles for running jobs over various
 exprimental setups.
 
-```
+```bash
 source env/gridai
 make -f experiments/<makefile> <target>
 ```

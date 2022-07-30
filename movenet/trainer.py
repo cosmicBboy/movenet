@@ -654,8 +654,6 @@ if __name__ == "__main__":
 
     configure_logging()
 
-    MAX_RETRIES = 10
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)

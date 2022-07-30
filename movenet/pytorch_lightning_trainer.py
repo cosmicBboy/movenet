@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from typing import Literal, Optional
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +13,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import WandbLogger
 
 
+# NOTE: consider rename: move2music
 class Dance2Music(LightningModule):
 
     def __init__(self, dataset_fp: str, config: TrainingConfig):
@@ -39,10 +41,10 @@ class Dance2Music(LightningModule):
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, batch_size=self.config.batch_size)
         return {
             "loss": loss,
-            "output": output,
+            "output": output.detach(),
         }
 
     def validation_step(self, batch, batch_idx):
@@ -53,9 +55,9 @@ class Dance2Music(LightningModule):
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
-        self.log("val_loss", loss)
+        self.log("val_loss", loss, batch_size=self.config.batch_size)
 
-        return {"output": output}
+        return {"output": output.detach()}
 
     def train_dataloader(self):
         return get_dataloader(
@@ -79,21 +81,39 @@ class Dance2Music(LightningModule):
         )
 
 
-def train_model(dataset: str, config: TrainingConfig, wandb_project: str):
+def train_model(
+    dataset: str,
+    config: TrainingConfig,
+    logger_name: Optional[Literal["wandb"]] = None,
+    log_samples: bool = False,
+    wandb_project: Optional[str] = None,
+):
     model = Dance2Music(dataset, config)
-    wandb_logger = WandbLogger(
-        project=wandb_project,
-        log_model="all",
-    )
+
+    callbacks = None
+    if log_samples:
+        callbacks = [LogSamplesCallback(log_every_n_epochs=10)]
+
+    logger = None
+    if logger_name == "wandb":
+        logger = WandbLogger(
+            project=wandb_project,
+            log_model="all",
+        )
+
+    print(f"Using logger: {logger}")
+
     trainer = Trainer(
         max_epochs=config.n_epochs,
         default_root_dir=config.model_output_path,
-        logger=wandb_logger,
+        logger=logger,
         log_every_n_steps=1,
-        num_sanity_val_steps=1,
-        callbacks=[LogSamplesCallback(log_every_n_epochs=10)],
+        num_sanity_val_steps=0,
+        callbacks=callbacks,
     )
-    wandb_logger.watch(model, log="all", log_freq=1)
+    if logger:
+        logger.watch(model, log="all", log_freq=1)
+
     trainer.fit(model=model)
 
 
@@ -101,5 +121,5 @@ if __name__ == "__main__":
     parser = arg_parser()
     args = parser.parse_args()
     config = config_from_args(args)
-
-    train_model(args.dataset, config, "dance2music-pl-testing")
+    logger = args.logger
+    train_model(args.dataset, config)
