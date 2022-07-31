@@ -137,4 +137,9 @@ if __name__ == "__main__":
     parser = arg_parser()
     args = parser.parse_args()
     config = config_from_args(args)
-    train_model(args.dataset, config, logger_name=args.logger)
+    train_model(
+        args.dataset,
+        config,
+        logger_name=args.logger,
+        log_samples=args.log_samples,
+    )

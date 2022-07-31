@@ -4,7 +4,7 @@ import librosa
 import torch
 import torchvision.io
 import wandb
-from torchaudio.functional import mu_law_decoding
+from torchaudio.functional import mu_law_decoding, resample
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import Callback
 
@@ -85,7 +85,7 @@ class LogSamplesCallback(Callback):
             _, orig_audio, vid_info = torchvision.io.read_video(fp)
 
             pred_audio = torch.from_numpy(
-                librosa.resample(
+                resample(
                     pred_output.numpy(),
                     pred_output.shape[0],
                     orig_audio.shape[1],
@@ -107,7 +107,7 @@ class LogSamplesCallback(Callback):
                     # upsample to original audio dims
                     target_dim = orig_audio.shape[1]
                 gen_audio = torch.from_numpy(
-                    librosa.resample(
+                    resample(
                         gen_output.numpy(),
                         gen_output.shape[0],
                         target_dim,
