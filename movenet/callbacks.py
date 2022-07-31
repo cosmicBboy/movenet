@@ -82,7 +82,9 @@ class LogSamplesCallback(Callback):
         for fp, info, pred_output, gen_output in zip(
             fps, infos, pred_outputs, gen_outputs
         ):
-            _, orig_audio, vid_info = torchvision.io.read_video(fp)
+            _, orig_audio, vid_info = torchvision.io.read_video(
+                fp, pts_unit="sec"
+            )
 
             pred_audio = resample(
                 pred_output,
