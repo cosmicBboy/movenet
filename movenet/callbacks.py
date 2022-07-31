@@ -84,12 +84,10 @@ class LogSamplesCallback(Callback):
         ):
             _, orig_audio, vid_info = torchvision.io.read_video(fp)
 
-            pred_audio = torch.from_numpy(
-                resample(
-                    pred_output.numpy(),
-                    pred_output.shape[0],
-                    orig_audio.shape[1],
-                )
+            pred_audio = resample(
+                pred_output,
+                pred_output.shape[0],
+                orig_audio.shape[1],
             )
 
             if gen_output is not None:
@@ -106,12 +104,10 @@ class LogSamplesCallback(Callback):
                 else:
                     # upsample to original audio dims
                     target_dim = orig_audio.shape[1]
-                gen_audio = torch.from_numpy(
-                    resample(
-                        gen_output.numpy(),
-                        gen_output.shape[0],
-                        target_dim,
-                    )
+                gen_audio = resample(
+                    gen_output,
+                    gen_output.shape[0],
+                    target_dim,
                 )
             else:
                 gen_audio = torch.zeros_like(pred_audio)
