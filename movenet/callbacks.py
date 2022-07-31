@@ -45,7 +45,8 @@ class LogSamplesCallback(Callback):
 
         audio, video, *_ = batch
         # need to do this manually since batch contains non-tensors
-        audio, video = audio.to(pl_module.device), video.to(pl_module.device)
+        audio = audio.to(pl_module.device)
+        video = video if video is None else video.to(pl_module.device)
 
         generated_output = pl_module(
             audio,
