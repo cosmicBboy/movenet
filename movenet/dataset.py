@@ -12,15 +12,13 @@ try:
 except:
     from typing_extensions import TypedDict
 
-import librosa
 import pandas as pd
 import torch
-import torchaudio
 import torchaudio.functional
 import torchvision.io
 from pytorchvideo.transforms.functional import uniform_temporal_subsample
 from torchvision.transforms.functional import rgb_to_grayscale
-from torchaudio.functional import mu_law_encoding
+from torchaudio.functional import mu_law_encoding, resample
 from torchtyping import TensorType
 
 from movenet.wavenet import (
@@ -113,7 +111,7 @@ class KineticsDataset(torch.utils.data.Dataset):
 
 
 def read_video(filepath, input_channels, use_video: bool):
-    video, audio, info = torchvision.io.read_video(filepath)
+    video, audio, info = torchvision.io.read_video(filepath, pts_unit="sec")
     # permute to: frames x channels x height x width
     info.update({
         "video_orig_dim": video.shape[0],
@@ -214,10 +212,7 @@ def resample_audio(
     audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
 ) -> TensorType["channels", "frames"]:
     x = audio.mean(dim=0)
-    resampled_audio = librosa.resample(
-        x.numpy(), x.shape[0], freq
-    ).reshape(1, -1)
-    resampled_audio = torch.from_numpy(resampled_audio)
+    resampled_audio = resample(x, x.shape[0], freq).reshape(1, -1)
     if resampled_audio.shape[1] > freq:
         resampled_audio = resampled_audio[:, :freq]
     return resampled_audio
