@@ -3,6 +3,7 @@ dataclasses
 dataclasses-json
 dvc
 joblib
+librosa
 numpy
 pandas
 pyyaml

@@ -1,3 +1,4 @@
+import math
 from dataclasses import asdict
 from typing import Optional
 
@@ -29,11 +30,22 @@ class Dance2Music(LightningModule):
         self.model = WaveNet(**asdict(config.model_config))
 
     def configure_optimizers(self):
-        return getattr(torch.optim, self.config.optimizer)(
+        optimizer = getattr(torch.optim, self.config.optimizer)(
             self.model.parameters(),
             lr=self.learning_rate,
             weight_decay=self.config.weight_decay,
         )
+        dataloader = self.train_dataloader()
+        n_updates = math.ceil(len(dataloader) / config.accumulation_steps)
+        scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
+            optimizer,
+            max_lr=config.max_learning_rate,
+            epochs=config.n_epochs,
+            steps_per_epoch=n_updates,
+            pct_start=config.lr_pct_start,
+            three_phase=True,
+        )
+        return [optimizer], [scheduler]
 
     def forward(self, audio, video, generate=False, n_samples=None):
         return self.model(audio, video, generate=generate, n_samples=n_samples)
