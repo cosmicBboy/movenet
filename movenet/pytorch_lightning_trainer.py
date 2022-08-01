@@ -94,14 +94,14 @@ def train_model(
     dataset: str,
     config: TrainingConfig,
     logger_name: Optional[Literal["wandb"]] = None,
-    log_samples: bool = False,
+    log_samples_every: Optional[int] = None,
     wandb_project: Optional[str] = None,
 ):
     model = Dance2Music(dataset, config)
 
     callbacks = None
-    if log_samples:
-        callbacks = [LogSamplesCallback(log_every_n_epochs=10)]
+    if log_samples_every:
+        callbacks = [LogSamplesCallback(log_every_n_epochs=log_samples_every)]
 
     logger = None
     if logger_name == "wandb":
@@ -141,5 +141,6 @@ if __name__ == "__main__":
         args.dataset,
         config,
         logger_name=args.logger,
-        log_samples=args.log_samples,
+        log_samples_every=args.log_samples_every,
+        wandb_project=args.wandb_project,
     )
