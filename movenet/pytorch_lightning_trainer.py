@@ -37,13 +37,13 @@ class Dance2Music(LightningModule):
             weight_decay=self.config.weight_decay,
         )
         dataloader = self.train_dataloader()
-        n_updates = math.ceil(len(dataloader) / config.accumulation_steps)
-        scheduler = getattr(torch.optim.lr_scheduler, config.scheduler)(
+        n_updates = math.ceil(len(dataloader) / self.config.accumulation_steps)
+        scheduler = getattr(torch.optim.lr_scheduler, self.config.scheduler)(
             optimizer,
-            max_lr=config.max_learning_rate,
-            epochs=config.n_epochs,
+            max_lr=self.config.max_learning_rate,
+            epochs=self.config.n_epochs,
             steps_per_epoch=n_updates,
-            pct_start=config.lr_pct_start,
+            pct_start=self.config.lr_pct_start,
             three_phase=True,
         )
         return {

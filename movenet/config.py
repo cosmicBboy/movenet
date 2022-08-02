@@ -43,6 +43,7 @@ class TrainingConfig:
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
+    base_learning_rate: float = 0.0003
     max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
 
