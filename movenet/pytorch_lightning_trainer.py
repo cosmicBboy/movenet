@@ -17,6 +17,7 @@ from movenet.wavenet import WaveNet
 
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 
 # NOTE: consider rename: move2music
@@ -45,7 +46,10 @@ class Dance2Music(LightningModule):
             pct_start=config.lr_pct_start,
             three_phase=True,
         )
-        return [optimizer], [scheduler]
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+        }
 
     def forward(self, audio, video, generate=False, n_samples=None):
         return self.model(audio, video, generate=generate, n_samples=n_samples)
@@ -111,9 +115,9 @@ def train_model(
 ):
     model = Dance2Music(dataset, config)
 
-    callbacks = None
+    callbacks = [LearningRateMonitor(logging_interval="step")]
     if log_samples_every:
-        callbacks = [LogSamplesCallback(log_every_n_epochs=log_samples_every)]
+        callbacks += [LogSamplesCallback(log_every_n_epochs=log_samples_every)]
 
     logger = None
     if logger_name == "wandb":
