@@ -16,7 +16,6 @@ COLUMNS = [
     "epoch",
     "batch_idx",
     "fp",
-    "video",
     "origin_audio",
     "pred_audio",
     "gen_audio",
@@ -24,8 +23,13 @@ COLUMNS = [
  
 class LogSamplesCallback(Callback):
 
-    def __init__(self, log_every_n_epochs: int = 10):
+    def __init__(self, log_every_n_epochs: int = 10, log_video: bool = True):
         self.log_every_n_epochs = log_every_n_epochs
+        self.log_video = log_video
+
+        self.columns = COLUMNS
+        if self.log_video:
+            self.columns += ["video"]
 
     def on_train_batch_end(
         self, trainer: Trainer, pl_module, outputs, batch, batch_idx
@@ -118,17 +122,20 @@ class LogSamplesCallback(Callback):
             else:
                 gen_audio = torch.zeros_like(pred_audio)
 
-            data.append([
+            row = [
                 split,
                 trainer.current_epoch,
                 batch_idx,
                 fp,
-                wandb.Video(fp),
                 wandb.Audio(orig_audio[0], sample_rate=vid_info["audio_fps"]),
                 wandb.Audio(pred_audio, sample_rate=vid_info["audio_fps"]),
                 wandb.Audio(gen_audio, sample_rate=vid_info["audio_fps"]),
-            ])
+            ]
+            if self.log_video:
+                row += [wandb.Video(fp)]
+
+            data.append(row)
 
         pl_module.logger.log_table(
-            key='sample_output', columns=COLUMNS, data=data
+            key='sample_output', columns=self.columns, data=data
         )
