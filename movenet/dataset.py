@@ -12,11 +12,8 @@ try:
 except:
     from typing_extensions import TypedDict
 
-import librosa
 import pandas as pd
 import torch
-import torchaudio
-import torchaudio.functional
 import torchvision.io
 from pytorchvideo.transforms.functional import uniform_temporal_subsample
 from torchvision.transforms.functional import rgb_to_grayscale
@@ -214,10 +211,7 @@ def resample_audio(
     audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
 ) -> TensorType["channels", "frames"]:
     x = audio.mean(dim=0)
-    resampled_audio = librosa.resample(
-        x.numpy(), orig_sr=x.shape[0], target_sr=freq,
-    ).reshape(1, -1)
-    resampled_audio = torch.from_numpy(resampled_audio)
+    resampled_audio = resample(x, x.shape[0], freq).reshape(1, -1)
     if resampled_audio.shape[1] > freq:
         resampled_audio = resampled_audio[:, :freq]
     return resampled_audio
