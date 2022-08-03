@@ -30,7 +30,7 @@ class LogSamplesCallback(Callback):
     def on_train_batch_end(
         self, trainer: Trainer, pl_module, outputs, batch, batch_idx
     ):
-        if trainer.current_epoch % self.log_every_n_epochs != 0:
+        if trainer.current_epoch + 1 % self.log_every_n_epochs != 0:
             return
 
         self.log_samples(
@@ -40,7 +40,7 @@ class LogSamplesCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if trainer.current_epoch % self.log_every_n_epochs != 0:
+        if trainer.current_epoch + 1 % self.log_every_n_epochs != 0:
             return
 
         audio, video, *_ = batch
@@ -89,8 +89,8 @@ class LogSamplesCallback(Callback):
             pred_audio = torch.from_numpy(
                 librosa.resample(
                     pred_output.numpy(),
-                    pred_output.shape[0],
-                    orig_audio.shape[1],
+                    orig_sr=pred_output.shape[0],
+                    target_sr=orig_audio.shape[1],
                 )
             )
 
@@ -111,8 +111,8 @@ class LogSamplesCallback(Callback):
                 gen_audio = torch.from_numpy(
                     librosa.resample(
                         gen_output.numpy(),
-                        gen_output.shape[0],
-                        target_dim,
+                        orig_sr=gen_output.shape[0],
+                        target_sr=target_dim,
                     )
                 )
             else:
