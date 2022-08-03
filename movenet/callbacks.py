@@ -30,7 +30,7 @@ class LogSamplesCallback(Callback):
     def on_train_batch_end(
         self, trainer: Trainer, pl_module, outputs, batch, batch_idx
     ):
-        if trainer.current_epoch + 1 % self.log_every_n_epochs != 0:
+        if (trainer.current_epoch + 1) % self.log_every_n_epochs != 0:
             return
 
         self.log_samples(
@@ -40,7 +40,7 @@ class LogSamplesCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if trainer.current_epoch + 1 % self.log_every_n_epochs != 0:
+        if (trainer.current_epoch + 1) % self.log_every_n_epochs != 0:
             return
 
         audio, video, *_ = batch
