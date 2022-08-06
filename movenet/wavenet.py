@@ -191,14 +191,14 @@ class WaveNet(nn.Module):
         generated_audio = torch.zeros(
             shape, dtype=audio.dtype, device=audio.device
         )
-        generated_audio[:, :, :self.receptive_fields] = audio[
-            :, :, :self.receptive_fields
+        generated_audio[:, :, :self.receptive_fields + 1] = audio[
+            :, :, :self.receptive_fields + 1
         ]
 
         # start generating audio at the point where there is sufficient data
         # in the model's receptive field.
         for i in range(self.receptive_fields, generated_audio.shape[-1] - 1):
-            start, end = i - self.receptive_fields, i + 1
+            start, end = i - self.receptive_fields, i
             local_audio = generated_audio[:, :, start: end]
 
             skip_connections = self.residual_conv_stack(
