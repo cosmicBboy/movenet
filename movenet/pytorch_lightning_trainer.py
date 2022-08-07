@@ -30,27 +30,6 @@ class Dance2Music(LightningModule):
         self.config = config
         self.model = WaveNet(**asdict(config.model_config))
 
-    def configure_optimizers(self):
-        optimizer = getattr(torch.optim, self.config.optimizer)(
-            self.model.parameters(),
-            lr=self.learning_rate,
-            weight_decay=self.config.weight_decay,
-        )
-        dataloader = self.train_dataloader()
-        n_updates = math.ceil(len(dataloader) / self.config.accumulation_steps)
-        scheduler = getattr(torch.optim.lr_scheduler, self.config.scheduler)(
-            optimizer,
-            max_lr=self.config.max_learning_rate,
-            epochs=self.config.n_epochs,
-            steps_per_epoch=n_updates,
-            pct_start=self.config.lr_pct_start,
-            three_phase=True,
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": scheduler,
-        }
-
     def forward(self, audio, video, generate=False, n_samples=None):
         return self.model(audio, video, generate=generate, n_samples=n_samples)
 
@@ -105,6 +84,68 @@ class Dance2Music(LightningModule):
             use_video=self.config.use_video,
         )
 
+    def configure_optimizers(self):
+
+        def optimizer_kwargs(optimizer: str):
+            kws = {
+                "lr": self.learning_rate,
+                "weight_decay": self.config.weight_decay,
+            }
+            opts = {
+                "AdamW": kws,
+                "SGD": {**kws, "momentum": self.config.momentum},
+                "RMSprop": {**kws, "momentum": self.config.momentum},
+            }
+            if optimizer not in opts:
+                raise ValueError(
+                    f"optimizer {optimizer} not recognized. "
+                    f"Must be one of {opts.keys()}"
+                )
+            return opts[optimizer]
+
+        def scheduler_kwargs(scheduler: str):
+            dataloader = self.train_dataloader()
+            n_updates = math.ceil(
+                len(dataloader) / self.config.accumulation_steps
+            )
+            sched = {
+                "OneCycleLR": {
+                    "max_lr": self.config.max_learning_rate,
+                    "epochs": self.config.n_epochs,
+                    "steps_per_epoch": n_updates,
+                    "pct_start": self.config.lr_pct_start,
+                    "three_phase": True,
+                },
+                "StepLR": {
+                    "step_size": self.config.scheduler_step_size,
+                    "gamma": self.config.scheduler_gamma,
+                },
+                "MultiStepLR": {
+                    "milestones": self.config.scheduler_milestones,
+                    "gamma": self.config.scheduler_gamma,
+                }
+            }
+            if scheduler not in sched:
+                raise ValueError(
+                    f"scheduler {scheduler} not recognized. "
+                    f"Must be one of {sched.keys()}"
+                )
+            return sched[scheduler]
+
+        optimizer = getattr(torch.optim, self.config.optimizer)(
+            self.model.parameters(),
+            **optimizer_kwargs(self.config.optimizer)
+        )
+        print(f"using optimizer: {optimizer}")
+        optimizers = {"optimizer": optimizer}
+
+        if self.config.scheduler is not None:
+            optimizers["lr_scheduler"] = getattr(
+                torch.optim.lr_scheduler, self.config.scheduler
+            )(optimizer, **scheduler_kwargs(self.config.scheduler))
+            print(f"using scheduler: {optimizers['lr_scheduler']}")
+
+        return optimizers
 
 def train_model(
     dataset: str,

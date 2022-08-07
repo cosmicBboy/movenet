@@ -1,8 +1,9 @@
 import argparse
+import json
 from datetime import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from dataclasses_json import dataclass_json, config
 
@@ -27,8 +28,8 @@ class TrainingConfig:
     batch_size: int = 3
     checkpoint_every: int = 25
     optimizer: str = "AdamW"
-    scheduler: str = "OneCycleLR"
-    learning_rate: float = 0.0002
+    learning_rate: float = 0.0001
+    momentum: float = 0.9
     accumulation_steps: int = 1
     num_workers: int = 0
     val_num_workers: int = 0
@@ -43,9 +44,18 @@ class TrainingConfig:
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
+    scheduler: Optional[str] = "OneCycleLR"
+
+    # for OneCycleLR
     base_learning_rate: float = 0.0003
     max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
+
+    # for StepLR and MultiStepLR
+    scheduler_step_size: int = 10
+    scheduler_gamma: float = 0.1
+
+    scheduler_milestones: Optional[List[int]] = None
 
     # distributed compute
     dist_backend: str = None
@@ -80,14 +90,21 @@ def config_from_args(args) -> TrainingConfig:
         ),
         batch_size=args.batch_size,
         checkpoint_every=args.checkpoint_every,
+        optimizer=args.optimizer,
         learning_rate=args.learning_rate,
+        momentum=args.momentum,
+        scheduler=args.scheduler,
         max_learning_rate=args.max_learning_rate,
+        lr_pct_start=args.lr_pct_start,
+        scheduler_step_size=args.scheduler_step_size,
+        scheduler_gamma=args.scheduler_gamma,
+        scheduler_milestones=args.scheduler_milestones,
+        weight_decay=args.weight_decay,
         generate_n_samples=args.generate_n_samples,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
         val_num_workers=args.val_num_workers,
         pin_memory=args.pin_memory,
-        weight_decay=args.weight_decay,
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
         use_video=args.use_video,
@@ -107,9 +124,20 @@ def arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)
-    parser.add_argument("--learning_rate", type=float, default=0.003)
-    parser.add_argument("--max_learning_rate", type=float, default=0.003)
+    parser.add_argument("--optimizer", type=str, default="AdamW")
+    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=0.000)
+    parser.add_argument("--scheduler", type=str, default=None)
+    parser.add_argument("--max_learning_rate", type=float, default=0.003)
+    parser.add_argument("--lr_pct_start", type=float, default=0.45)
+    parser.add_argument("--scheduler_step_size", type=int, default=10)
+    parser.add_argument("--scheduler_gamma", type=float, default=0.1)
+    parser.add_argument(
+        "--scheduler_milestones",
+        type=lambda x: [int(i) for i in json.loads(x)],
+        default=None,
+    )
     parser.add_argument("--accumulation_steps", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--val_num_workers", type=int, default=1)
