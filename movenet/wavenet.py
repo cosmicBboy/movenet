@@ -153,6 +153,7 @@ class WaveNet(nn.Module):
         global_features: TensorType = None,
         generate: bool = False,
         n_samples: Optional[int] = None,
+        output_unnormalized: bool = True,
     ):
         if generate:
             return self.generate(audio, video, global_features, n_samples)
@@ -173,7 +174,9 @@ class WaveNet(nn.Module):
             skip_size=self.compute_output_size(audio)
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
-        return output
+        if output_unnormalized:
+            return output
+        return F.softmax(output, dim=1)
 
     def generate(
         self,

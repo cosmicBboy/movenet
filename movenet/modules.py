@@ -136,4 +136,4 @@ class DenseConv(nn.Module):
     def forward(self, x):
         x = self.conv1(torch.tanh(x))
         x = self.conv2(torch.tanh(x))
-        return F.softmax(x, dim=1)
+        return x
