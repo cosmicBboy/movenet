@@ -156,6 +156,7 @@ class WaveNet(nn.Module):
         output_unnormalized: bool = True,
     ):
         if generate:
+            # TODO: remove this, since `generate` can be called on its own.
             return self.generate(audio, video, global_features, n_samples)
 
         video = video if video is None else self.upsample_video(video)
@@ -185,6 +186,7 @@ class WaveNet(nn.Module):
         global_features: TensorType = None,
         n_samples: Optional[int] = None,
     ):
+        self.eval()
         video = video if video is None else self.upsample_video(video)
 
         shape = audio.shape if n_samples is None else (
@@ -194,29 +196,24 @@ class WaveNet(nn.Module):
         generated_audio = torch.zeros(
             shape, dtype=audio.dtype, device=audio.device
         )
-        generated_audio[:, :, :self.receptive_fields + 1] = audio[
-            :, :, :self.receptive_fields + 1
+        generated_audio[:, :, :self.receptive_fields] = audio[
+            :, :, :self.receptive_fields
         ]
 
         # start generating audio at the point where there is sufficient data
         # in the model's receptive field.
-        for i in range(self.receptive_fields, generated_audio.shape[-1] - 1):
+        for i in range(self.receptive_fields, generated_audio.shape[-1]):
             start, end = i - self.receptive_fields, i
-            local_audio = generated_audio[:, :, start: end]
-
             skip_connections = self.residual_conv_stack(
-                input=self.causal_conv(local_audio),
+                input=self.causal_conv(generated_audio[:, :, start: end]),
                 context=video if video is None else video[:, :, start: end],
-                skip_size=self.compute_output_size(audio)
+                # output size
+                skip_size=1
             )
-            output = self.dense_conv(
-                torch.sum(skip_connections, dim=0)
-            )[:, :, -1:]
-            generated_audio[:, :, [i + 1]] = torch.zeros_like(output).scatter_(
+            output = self.dense_conv(torch.sum(skip_connections, dim=0))
+            # TODO: add temperature parameter to generate stochastically
+            generated_audio[:, :, [i]] = torch.zeros_like(output).scatter_(
                 1, output.argmax(1, keepdims=True), 1
             )
-            del local_audio
-            del skip_connections
-            del output
 
         return generated_audio

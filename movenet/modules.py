@@ -84,9 +84,13 @@ class GatedResidualConv1d(nn.Module):
         residual = self.conv_residual(gated)
         residual += input[:, :, -residual.size(2):]
 
-        # skip connection
+        # skip connection: skip_size determines the output size of the network
+        # given the model's receptive field and the input audio size. The latter
+        # must always be larger than the former...
+        # TODO: skip_size should really be called output_size for clarity
         skip = self.conv_skip(gated)
         skip = skip[:, :, -skip_size:]
+
         return residual, skip
 
 
@@ -122,8 +126,9 @@ class ResidualConvStack(nn.Module):
         output = input
         skip_connections = []
         for gated_residual_conv in self.conv_layers:
-            output, skip = gated_residual_conv(output, context, skip_size)
+            residual, skip = gated_residual_conv(output, context, skip_size)
             skip_connections.append(skip)
+            output = residual
         return torch.stack(skip_connections)
 
 
