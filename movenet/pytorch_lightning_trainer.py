@@ -30,8 +30,8 @@ class Dance2Music(LightningModule):
         self.config = config
         self.model = WaveNet(**asdict(config.model_config))
 
-    def forward(self, audio, video, generate=False, n_samples=None):
-        return self.model(audio, video, generate=generate, n_samples=n_samples)
+    def forward(self, audio, video, n_samples=None):
+        return self.model(audio, video, n_samples=n_samples)
 
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
@@ -123,7 +123,7 @@ class Dance2Music(LightningModule):
                 "MultiStepLR": {
                     "milestones": self.config.scheduler_milestones,
                     "gamma": self.config.scheduler_gamma,
-                }
+                },
             }
             if scheduler not in sched:
                 raise ValueError(

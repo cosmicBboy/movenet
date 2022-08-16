@@ -125,7 +125,13 @@ class WaveNet(nn.Module):
     @property
     @functools.lru_cache(maxsize=None)
     def receptive_fields(self):
-        return sum(self.residual_conv_stack.dilations)
+        # adding one timepoint in the receptive field for each residual conv
+        # stack, since the dilation conv layer can "see" n + 1 timepoints
+        # where n is the dilation factor.
+        return sum(
+            self.residual_conv_stack.dilations
+            + [1] * self.residual_conv_stack.stack_size
+        )
 
     def compute_output_size(self, x):
         output_size = int(x.size(2)) - self.receptive_fields
@@ -151,14 +157,9 @@ class WaveNet(nn.Module):
         audio: AudioTensor,
         video: Optional[VideoTensor],
         global_features: TensorType = None,
-        generate: bool = False,
         n_samples: Optional[int] = None,
         output_unnormalized: bool = True,
     ):
-        if generate:
-            # TODO: remove this, since `generate` can be called on its own.
-            return self.generate(audio, video, global_features, n_samples)
-
         video = video if video is None else self.upsample_video(video)
         audio = self.causal_conv(audio)
         # TODO: apply causal_conv to video signal as well?
@@ -179,12 +180,14 @@ class WaveNet(nn.Module):
             return output
         return F.softmax(output, dim=1)
 
+    @torch.no_grad()
     def generate(
         self,
         audio: AudioTensor,
         video: Optional[VideoTensor],
         global_features: TensorType = None,
         n_samples: Optional[int] = None,
+        temperature: float = 1.0,
     ):
         self.eval()
         video = video if video is None else self.upsample_video(video)
@@ -211,9 +214,15 @@ class WaveNet(nn.Module):
                 skip_size=1
             )
             output = self.dense_conv(torch.sum(skip_connections, dim=0))
-            # TODO: add temperature parameter to generate stochastically
-            generated_audio[:, :, [i]] = torch.zeros_like(output).scatter_(
-                1, output.argmax(1, keepdims=True), 1
-            )
+
+            if temperature > 0:
+                output /= temperature
+                choices = torch.multinomial(
+                    F.softmax(output, dim=1).squeeze(2), 1
+                ).unsqueeze(2)
+            else:
+                choices = F.softmax(output, dim=1).argmax(1, keepdims=True)
+
+            generated = torch.zeros_like(output).scatter_(1, choices, 1)
 
         return generated_audio

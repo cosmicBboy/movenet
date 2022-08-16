@@ -51,14 +51,11 @@ class LogSamplesCallback(Callback):
         # need to do this manually since batch contains non-tensors
         audio = audio.to(pl_module.device)
         video = video if video is None else video.to(pl_module.device)
-
-        generated_output = pl_module(
+        outputs["generated_output"] = pl_module.model.generate(
             audio,
             video,
-            generate=True,
             n_samples=pl_module.config.generate_n_samples,
         )
-        outputs["generated_output"] = generated_output
 
         self.log_samples(
             "validation", trainer, pl_module, outputs, batch, batch_idx

@@ -13,34 +13,33 @@ class ConvTranspose2d(nn.Module):
 
 
 class CausalConv1d(nn.Module):
-    def __init__(self, input_channels, out_channels):
+    def __init__(self, input_channels, out_channels, kernel_size=2, bias=False):
         super().__init__()
+        self.kernel_size = kernel_size
         self.conv = nn.Conv1d(
             input_channels,
             out_channels,
-            kernel_size=2,
+            kernel_size=kernel_size,
             stride=1,
-            padding=1,
-            bias=True,
+            padding=(kernel_size - 1),
+            bias=bias,
         )
 
     def forward(self, x):
-        # remove last value for causal convolution
-        return self.conv(x)[:, :, :-1]
+        # remove last values for causal convolution
+        return self.conv(x)[:, :, :-(self.kernel_size - 1)]
 
 
 class DilatedCausalConv1d(nn.Module):
-    def __init__(self, channels, kernel_size=3, dilation=1):
+    def __init__(self, channels, dilation=1, kernel_size=2, bias=False):
         super().__init__()
-        padding = (kernel_size - 1) // 2 * dilation
         self.conv = nn.Conv1d(
             channels,
             channels,
             kernel_size=kernel_size,
             stride=1,
             dilation=dilation,
-            padding=padding,
-            bias=True,
+            bias=bias,
         )
 
     def forward(self, x):
@@ -126,9 +125,8 @@ class ResidualConvStack(nn.Module):
         output = input
         skip_connections = []
         for gated_residual_conv in self.conv_layers:
-            residual, skip = gated_residual_conv(output, context, skip_size)
+            output, skip = gated_residual_conv(output, context, skip_size)
             skip_connections.append(skip)
-            output = residual
         return torch.stack(skip_connections)
 
 
