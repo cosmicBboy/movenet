@@ -156,16 +156,18 @@ def train_model(
 ):
     model = Dance2Music(dataset, config)
 
-    callbacks = [LearningRateMonitor(logging_interval="step")]
-    if log_samples_every:
-        callbacks += [LogSamplesCallback(log_every_n_epochs=log_samples_every)]
-
     logger = None
+    callbacks = []
     if logger_name == "wandb":
         logger = WandbLogger(
             project=wandb_project,
             log_model="all",
         )
+        callbacks.append(LearningRateMonitor(logging_interval="step"))
+        if log_samples_every:
+            callbacks.append(
+                LogSamplesCallback(log_every_n_epochs=log_samples_every)
+            )
 
     print(f"Using logger: {logger}")
 
