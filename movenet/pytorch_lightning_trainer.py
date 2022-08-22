@@ -38,7 +38,11 @@ class Dance2Music(LightningModule):
         # need to do this manually since batch contains non-tensors
         audio = audio.to(self.device)
         video = video.to(self.device) if self.config.use_video else video
-        output = self(audio, video)
+
+        # exclude the last predicted time step, which has no associated target.
+        # during audio generation, this final output will be used to auto-
+        # regressively generate the next time step.
+        output = self(audio, video)[:, :, :-1]
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)

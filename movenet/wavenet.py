@@ -134,7 +134,10 @@ class WaveNet(nn.Module):
         )
 
     def compute_output_size(self, x):
-        output_size = int(x.size(2)) - self.receptive_fields
+        # adding +1 because the output will include a prediction for the
+        # last time step in the model, which will have no target during training
+        # time.
+        output_size = int(x.size(2)) - self.receptive_fields + 1
         if output_size < 1:
             raise ValueError(
                 "input time steps must be larger than the number of receptive "
