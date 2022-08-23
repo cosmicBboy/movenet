@@ -200,7 +200,6 @@ class WaveNet(nn.Module):
         temperature: float = 1.0,
     ):
         self.eval()
-        video = video if video is None else self.upsample_video(video)
 
         shape = audio.shape if n_samples is None else (
             audio.shape[0], audio.shape[1], n_samples
@@ -218,8 +217,8 @@ class WaveNet(nn.Module):
         for i in range(self.receptive_fields, generated_audio.shape[-1]):
             start, end = i - self.receptive_fields, i
             output = self.forward(
-                audio=self.causal_conv(generated_audio[:, :, start: end]),
-                video=video if video is None else video[:, :, start: end],
+                audio=generated_audio[:, :, start: end],
+                video=video,
                 output_unnormalized=True,
                 remove_last=False,
             )
