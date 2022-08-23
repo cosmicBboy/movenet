@@ -216,7 +216,7 @@ class WaveNet(nn.Module):
         # in the model's receptive field.
         for i in range(self.receptive_fields, generated_audio.shape[-1]):
             start, end = i - self.receptive_fields, i
-            output = self.forward(
+            output = self(
                 audio=generated_audio[:, :, start: end],
                 video=video,
                 output_unnormalized=True,
