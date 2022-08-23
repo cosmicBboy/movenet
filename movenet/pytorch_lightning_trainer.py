@@ -30,19 +30,15 @@ class Dance2Music(LightningModule):
         self.config = config
         self.model = WaveNet(**asdict(config.model_config))
 
-    def forward(self, audio, video, n_samples=None):
-        return self.model(audio, video, n_samples=n_samples)
+    def forward(self, audio, video, remove_last: bool = True):
+        return self.model(audio, video, remove_last=remove_last)
 
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
         # need to do this manually since batch contains non-tensors
         audio = audio.to(self.device)
         video = video.to(self.device) if self.config.use_video else video
-
-        # exclude the last predicted time step, which has no associated target.
-        # during audio generation, this final output will be used to auto-
-        # regressively generate the next time step.
-        output = self(audio, video)[:, :, :-1]
+        output = self(audio, video, remove_last=True)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
@@ -57,7 +53,7 @@ class Dance2Music(LightningModule):
         # need to do this manually since batch contains non-tensors
         audio = audio.to(self.device)
         video = video.to(self.device) if self.config.use_video else video
-        output = self(audio, video)
+        output = self(audio, video, remove_last=True)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)

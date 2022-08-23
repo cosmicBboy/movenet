@@ -160,8 +160,8 @@ class WaveNet(nn.Module):
         audio: AudioTensor,
         video: Optional[VideoTensor],
         global_features: TensorType = None,
-        n_samples: Optional[int] = None,
         output_unnormalized: bool = True,
+        remove_last: bool = True,
     ):
         video = video if video is None else self.upsample_video(video)
         audio = self.causal_conv(audio)
@@ -179,7 +179,14 @@ class WaveNet(nn.Module):
             skip_size=self.compute_output_size(audio)
         )
         output = self.dense_conv(torch.sum(skip_connections, dim=0))
-        if output_unnormalized:
+
+        if remove_last:
+            # exclude the last predicted time step, which has no associated
+            # target. During audio generation, this final output will be used
+            # to auto-regressively generate the next time step.
+            output = output[:, :, :-1]
+
+        if not output_unnormalized:
             return output
         return F.softmax(output, dim=1)
 
@@ -210,14 +217,14 @@ class WaveNet(nn.Module):
         # in the model's receptive field.
         for i in range(self.receptive_fields, generated_audio.shape[-1]):
             start, end = i - self.receptive_fields, i
-            skip_connections = self.residual_conv_stack(
-                input=self.causal_conv(generated_audio[:, :, start: end]),
-                context=video if video is None else video[:, :, start: end],
-                # output size
-                skip_size=1
+            output = self.forward(
+                audio=self.causal_conv(generated_audio[:, :, start: end]),
+                video=video if video is None else video[:, :, start: end],
+                output_unnormalized=True,
+                remove_last=False,
             )
-            output = self.dense_conv(torch.sum(skip_connections, dim=0))
-
+            assert output.shape[2] == 1, \
+                f"expected output to be 1, found {output.shape[0]}"
             if temperature > 0:
                 output /= temperature
                 choices = torch.multinomial(
