@@ -38,6 +38,7 @@ class TrainingConfig:
     n_epochs: int = 100
     n_steps_per_epoch: Optional[int] = None
     use_video: bool = True
+    gradient_clipping: Optional[float] = 0.0
 
     # sample generation
     generate_n_samples: Optional[int] = None
@@ -156,6 +157,7 @@ def arg_parser() -> argparse.ArgumentParser:
         type=lambda x: bool(int(x)),
         default=True,
     )
+    parser.add_argument("--gradient_clipping", type=float, default=0.0)
     parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)
     parser.add_argument("--residual_channels", type=int, default=16)

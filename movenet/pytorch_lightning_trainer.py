@@ -174,6 +174,7 @@ def train_model(
     trainer = Trainer(
         max_epochs=config.n_epochs,
         default_root_dir=config.model_output_path,
+        gradient_clip_val=config.gradient_clipping,
         logger=logger,
         log_every_n_steps=1,
         num_sanity_val_steps=0,
