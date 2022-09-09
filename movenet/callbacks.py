@@ -23,9 +23,15 @@ COLUMNS = [
  
 class LogSamplesCallback(Callback):
 
-    def __init__(self, log_every_n_epochs: int = 10, log_video: bool = True):
+    def __init__(
+        self,
+        log_every_n_epochs: int = 10,
+        log_video: bool = True,
+        temperature: float = 1.0,
+    ):
         self.log_every_n_epochs = log_every_n_epochs
         self.log_video = log_video
+        self.temperature = temperature
 
         self.columns = COLUMNS
         if self.log_video:
@@ -55,6 +61,7 @@ class LogSamplesCallback(Callback):
             audio,
             video,
             n_samples=pl_module.config.generate_n_samples,
+            temperature=self.temperature,
         )
 
         self.log_samples(
