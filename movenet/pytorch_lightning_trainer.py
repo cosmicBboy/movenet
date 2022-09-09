@@ -30,8 +30,8 @@ class Dance2Music(LightningModule):
         self.config = config
         self.model = WaveNet(**asdict(config.model_config))
 
-    def forward(self, audio, video, remove_last: bool = True):
-        return self.model(audio, video, remove_last=remove_last)
+    def forward(self, audio, video, **kwargs):
+        return self.model(audio, video, **kwargs)
 
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
@@ -42,7 +42,9 @@ class Dance2Music(LightningModule):
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
+        acc = (output.argmax(1) == target).float().mean()
         self.log("train_loss", loss, batch_size=self.config.batch_size)
+        self.log("train_acc", acc, batch_size=self.config.batch_size)
         return {
             "loss": loss,
             "output": output.detach(),
@@ -57,7 +59,9 @@ class Dance2Music(LightningModule):
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
+        acc = (output.argmax(1) == target).float().mean()
         self.log("val_loss", loss, batch_size=self.config.batch_size)
+        self.log("val_acc", acc, batch_size=self.config.batch_size)
 
         return {"output": output.detach()}
 
@@ -92,6 +96,7 @@ class Dance2Music(LightningModule):
                 "weight_decay": self.config.weight_decay,
             }
             opts = {
+                "Adam": kws,
                 "AdamW": kws,
                 "SGD": {**kws, "momentum": self.config.momentum},
                 "RMSprop": {**kws, "momentum": self.config.momentum},
@@ -152,6 +157,7 @@ def train_model(
     config: TrainingConfig,
     logger_name: Optional[Literal["wandb"]] = None,
     log_samples_every: Optional[int] = None,
+    log_video: bool = False,
     wandb_project: Optional[str] = None,
 ):
     model = Dance2Music(dataset, config)
@@ -166,7 +172,10 @@ def train_model(
         callbacks.append(LearningRateMonitor(logging_interval="step"))
         if log_samples_every:
             callbacks.append(
-                LogSamplesCallback(log_every_n_epochs=log_samples_every)
+                LogSamplesCallback(
+                    log_every_n_epochs=log_samples_every,
+                    log_video=log_video,
+                )
             )
 
     print(f"Using logger: {logger}")
@@ -202,5 +211,6 @@ if __name__ == "__main__":
         config,
         logger_name=args.logger,
         log_samples_every=args.log_samples_every,
+        log_video=args.log_video,
         wandb_project=args.wandb_project,
     )

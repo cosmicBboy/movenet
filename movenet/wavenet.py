@@ -79,7 +79,7 @@ class WaveNet(nn.Module):
         input_channels: int,  # audio input channels
         residual_channels: int = 16,
         skip_channels: int = 16,
-        video_in_channels: int = 1,
+        context_in_channels: int = 1,
     ):
         super().__init__()
         
@@ -92,7 +92,7 @@ class WaveNet(nn.Module):
 
         # modules
         self.video_conv = nn.Conv3d(
-            in_channels=video_in_channels,
+            in_channels=context_in_channels,
             out_channels=residual_channels,
             kernel_size=VIDEO_KERNEL_SIZE,
         )
@@ -158,7 +158,7 @@ class WaveNet(nn.Module):
     def forward(
         self,
         audio: AudioTensor,
-        video: Optional[VideoTensor],
+        video: Optional[VideoTensor] = None,
         global_features: TensorType = None,
         output_unnormalized: bool = True,
         remove_last: bool = True,
@@ -194,7 +194,7 @@ class WaveNet(nn.Module):
     def generate(
         self,
         audio: AudioTensor,
-        video: Optional[VideoTensor],
+        video: Optional[VideoTensor] = None,
         global_features: TensorType = None,
         n_samples: Optional[int] = None,
         temperature: float = 1.0,

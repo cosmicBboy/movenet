@@ -189,6 +189,9 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--grid_api_key", type=str, default="")
     parser.add_argument("--logger", default=None, type=str, choices=["wandb"])
     parser.add_argument("--log_samples_every", type=int, default=None)
+    parser.add_argument(
+        "--log_video", type=lambda x: bool(int(x)), default=False,
+    )
     parser.add_argument("--wandb_api_key", type=str, default="")
     parser.add_argument(
         "--wandb_project", type=str, default="dance2music-pl-testing"

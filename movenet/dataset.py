@@ -61,11 +61,13 @@ class KineticsDataset(torch.utils.data.Dataset):
         input_channels: int,
         train: bool = True,
         use_video: bool = True,
+        normalize_audio: bool = True,
     ):
         self.filepath = Path(filepath)
         self.train = train
         self.input_channels = input_channels
         self.use_video = use_video
+        self.normalize_audio = normalize_audio
 
         # here we use the class label in the kinetics dataset as global
         # context
@@ -104,12 +106,15 @@ class KineticsDataset(torch.utils.data.Dataset):
             self.index[item].context,
             self.index[item].filepath,
             *read_video(
-                self.index[item].filepath, self.input_channels, self.use_video,
+                self.index[item].filepath,
+                self.input_channels,
+                self.use_video,
+                self.normalize_audio,
             ),
         )
 
 
-def read_video(filepath, input_channels, use_video: bool):
+def read_video(filepath, input_channels, use_video: bool, normalize_audio: bool):
     video, audio, info = torchvision.io.read_video(filepath, pts_unit="sec")
     # permute to: frames x channels x height x width
     info.update({
@@ -120,7 +125,9 @@ def read_video(filepath, input_channels, use_video: bool):
         return None, None, info
 
     video = resize_video(video.permute(0, 3, 1, 2)) if use_video else None
-    audio = one_hot_encode_audio(resample_audio(audio), input_channels)
+    audio = one_hot_encode_audio(
+        resample_audio(audio), input_channels, normalize_audio,
+    )
     return video, audio, info
 
 
@@ -217,29 +224,30 @@ def resample_audio(
     return resampled_audio
 
 
-def normalize_audio(audio: TensorType["channels", "frames"]):
+def _normalize_audio(audio: TensorType["channels", "frames"]):
     """Normalize audio to be between -1 and 1."""
     if audio.sum() == 0:
         # TODO: need to better handle cases where all values are 0
         return audio
-    mean_centered = audio - audio.mean()
-    audio_output = mean_centered / mean_centered.abs().max()
-    assert audio_output.min() >= -1, "audio minimum can't be less than -1"
-    assert audio_output.max() <= 1, "audio maximum can't be more than 1"
-    return audio_output
+
+    min_val, max_val = audio.min(), audio.max()
+    audio = (audio - min_val) / (max_val - min_val)
+    # normalize with the formula: audio * (upper - lower) + lower
+    # upper = 1, lower = -1, this simplifies to the expression below
+    return audio * 2 - 1
 
 
-def one_hot_encode_audio(audio, input_channels):
+def one_hot_encode_audio(audio, input_channels: int, normalize_audio: bool):
     # need to figure out a more principled way of combining two audio
     # (left/right) channels into one
     # https://stackoverflow.com/questions/37313320/how-to-convert-two-channel-audio-into-one-channel-audio
-    audio = normalize_audio(audio)
+    if normalize_audio:
+        audio = _normalize_audio(audio)
     quantized = mu_law_encoding(audio, input_channels)
     one_hot_enc = (
         torch.zeros(input_channels, quantized.size(1))
         .scatter_(0, quantized, 1)
     )
-    assert (one_hot_enc.sum(dim=0) == 1).all(), "one hot encoding error"
     return one_hot_enc
 
 
