@@ -38,7 +38,7 @@ class Dance2Music(LightningModule):
         # need to do this manually since batch contains non-tensors
         audio = audio.to(self.device)
         video = video.to(self.device) if self.config.use_video else video
-        output = self(audio, video, remove_last=True)
+        output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
@@ -55,7 +55,7 @@ class Dance2Music(LightningModule):
         # need to do this manually since batch contains non-tensors
         audio = audio.to(self.device)
         video = video.to(self.device) if self.config.use_video else video
-        output = self(audio, video, remove_last=True)
+        output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
         loss = F.cross_entropy(output, target)
