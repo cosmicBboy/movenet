@@ -139,6 +139,7 @@ def get_dataloader(
     rank: int = 0,
     world_size: int = 0,
     use_video: bool = True,
+    normalize_audio: bool = True,
     **kwargs,
 ):
     dataset = KineticsDataset(
@@ -146,6 +147,7 @@ def get_dataloader(
         input_channels,
         train=train,
         use_video=use_video,
+        normalize_audio=normalize_audio,
     )
     sampler = None
     if world_size > 1:

@@ -35,9 +35,14 @@ class Dance2Music(LightningModule):
 
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
+
         # need to do this manually since batch contains non-tensors
-        audio = audio.to(self.device)
-        video = video.to(self.device) if self.config.use_video else video
+        dtype = getattr(torch, f"float{self.precision}")
+        audio = audio.type(dtype).to(self.device)
+
+        if self.config.use_video:
+            video = video.type(dtype).to(self.device)
+
         output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
@@ -169,6 +174,7 @@ def train_model(
             project=wandb_project,
             log_model="all",
         )
+        logger.experiment.config.update(asdict(config))
         callbacks.append(LearningRateMonitor(logging_interval="step"))
         if log_samples_every:
             callbacks.append(
@@ -188,6 +194,7 @@ def train_model(
         log_every_n_steps=1,
         num_sanity_val_steps=0,
         callbacks=callbacks,
+        track_grad_norm=2,
     )
     if logger:
         logger.watch(model, log="all", log_freq=1)

@@ -54,9 +54,14 @@ class LogSamplesCallback(Callback):
             return
 
         audio, video, *_ = batch
+
         # need to do this manually since batch contains non-tensors
-        audio = audio.to(pl_module.device)
-        video = video if video is None else video.to(pl_module.device)
+        dtype = getattr(torch, f"float{pl_module.precision}")
+        audio = audio.type(dtype).to(pl_module.device)
+
+        if pl_module.config.use_video:
+            video = video.type(dtype).to(pl_module.device)
+
         outputs["generated_output"] = pl_module.model.generate(
             audio,
             video,
