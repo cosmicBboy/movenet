@@ -57,9 +57,14 @@ class Dance2Music(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
+
         # need to do this manually since batch contains non-tensors
-        audio = audio.to(self.device)
-        video = video.to(self.device) if self.config.use_video else video
+        dtype = getattr(torch, f"float{self.precision}")
+        audio = audio.type(dtype).to(self.device)
+
+        if self.config.use_video:
+            video = video.type(dtype).to(self.device)
+
         output = self(audio, video)
 
         target = audio[:, :, self.model.receptive_fields:].argmax(1)
