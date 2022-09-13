@@ -137,6 +137,6 @@ class DenseConv(nn.Module):
         self.conv2 = nn.Conv1d(out_channels, out_channels, 1)
 
     def forward(self, x):
-        x = self.conv1(torch.tanh(x))
-        x = self.conv2(torch.tanh(x))
+        x = self.conv1(F.leaky_relu(x))
+        x = self.conv2(F.leaky_relu(x))
         return x

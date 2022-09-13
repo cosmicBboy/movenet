@@ -48,7 +48,6 @@ class TrainingConfig:
     scheduler: Optional[str] = "OneCycleLR"
 
     # for OneCycleLR
-    base_learning_rate: float = 0.0003
     max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
 
