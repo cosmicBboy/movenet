@@ -42,18 +42,29 @@ class TrainingConfig:
 
     # sample generation
     generate_n_samples: Optional[int] = None
+    generate_temperature: float = 1.0
 
     # found through learning rate range experiment:
     # https://wandb.ai/nielsbantilan/dance2music/runs/3a4sfxev?workspace=user-nielsbantilan
     scheduler: Optional[str] = "OneCycleLR"
 
     # for OneCycleLR
-    max_learning_rate: float = 0.003
     lr_pct_start: float = 0.45
+
+    # for CyclicLR
+    base_learning_rate: float = 0.0003
+    scheduler_step_size_up: int = 1000
+    scheduler_step_size_down: Optional[int] = None
+    scheduler_cyclic_mode: str = "triangular"
+    scheduler_cyclic_gamma: float = 1.0
+    scheduler_cycle_momentum: bool = False
+
+    # for OneCycleLR and CyclicLR
+    max_learning_rate: float = 0.003
 
     # for StepLR and MultiStepLR
     scheduler_step_size: int = 10
-    scheduler_gamma: float = 0.1
+    scheduler_step_gamma: float = 0.1
 
     scheduler_milestones: Optional[List[int]] = None
 
@@ -77,6 +88,7 @@ class TrainingConfig:
     tensorboard_dir: Path = field(
         default="tensorboard_logs", metadata=config(encoder=str, decoder=Path),
     )
+    log_samples_every: Optional[int] = None
 
 
 def config_from_args(args) -> TrainingConfig:
@@ -94,13 +106,20 @@ def config_from_args(args) -> TrainingConfig:
         learning_rate=args.learning_rate,
         momentum=args.momentum,
         scheduler=args.scheduler,
-        max_learning_rate=args.max_learning_rate,
         lr_pct_start=args.lr_pct_start,
+        base_learning_rate=args.base_learning_rate,
+        scheduler_step_size_up=args.scheduler_step_size_up,
+        scheduler_step_size_down=args.scheduler_step_size_down,
+        scheduler_cyclic_mode=args.scheduler_cyclic_mode,
+        scheduler_cyclic_gamma=args.scheduler_cyclic_gamma,
+        scheduler_cycle_momentum=args.scheduler_cycle_momentum,
+        max_learning_rate=args.max_learning_rate,
         scheduler_step_size=args.scheduler_step_size,
-        scheduler_gamma=args.scheduler_gamma,
+        scheduler_step_gamma=args.scheduler_step_gamma,
         scheduler_milestones=args.scheduler_milestones,
         weight_decay=args.weight_decay,
         generate_n_samples=args.generate_n_samples,
+        generate_temperature=args.generate_temperature,
         accumulation_steps=args.accumulation_steps,
         num_workers=args.num_workers,
         val_num_workers=args.val_num_workers,
@@ -117,6 +136,7 @@ def config_from_args(args) -> TrainingConfig:
         ),
         model_output_path=args.model_output_path,
         tensorboard_dir=args.training_logs_path,
+        log_samples_every=args.log_samples_every,
     )
 
 
@@ -129,10 +149,22 @@ def arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=0.000)
     parser.add_argument("--scheduler", type=str, default=None)
-    parser.add_argument("--max_learning_rate", type=float, default=0.003)
     parser.add_argument("--lr_pct_start", type=float, default=0.45)
+    parser.add_argument("--base_learning_rate", type=float, default=0.0003)
+    parser.add_argument("--scheduler_step_size_up", type=int, default=1000)
+    parser.add_argument("--scheduler_step_size_down", type=int, default=None)
+    parser.add_argument(
+        "--scheduler_cyclic_mode", type=str, default="triangular"
+    )
+    parser.add_argument("--scheduler_cyclic_gamma", type=float, default=1.0)
+    parser.add_argument(
+        "--scheduler_cycle_momentum",
+        type=lambda x: bool(int(x)),
+        default=False,
+    )
+    parser.add_argument("--max_learning_rate", type=float, default=0.003)
     parser.add_argument("--scheduler_step_size", type=int, default=10)
-    parser.add_argument("--scheduler_gamma", type=float, default=0.1)
+    parser.add_argument("--scheduler_step_gamma", type=float, default=0.1)
     parser.add_argument(
         "--scheduler_milestones",
         type=lambda x: [int(i) for i in json.loads(x)],
@@ -149,6 +181,7 @@ def arg_parser() -> argparse.ArgumentParser:
         type=lambda x: x if x is None else int(x),
         default=None
     )
+    parser.add_argument("--generate_temperature", type=float, default=1.0)
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_steps_per_epoch", type=int, default=None)
     parser.add_argument(

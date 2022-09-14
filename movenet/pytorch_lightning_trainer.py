@@ -50,9 +50,25 @@ class Dance2Music(LightningModule):
         acc = (output.argmax(1) == target).float().mean()
         self.log("train_loss", loss, batch_size=self.config.batch_size)
         self.log("train_acc", acc, batch_size=self.config.batch_size)
+
+        generated_output = None
+        if (
+            self.config.log_samples_every is not None
+            and (self.current_epoch + 1) % self.config.log_samples_every == 0
+        ):
+            generated_output = (
+                self.model.generate(
+                    audio,
+                    video,
+                    n_samples=self.config.generate_n_samples,
+                    temperature=self.config.generate_temperature,
+                )
+            )
+
         return {
             "loss": loss,
             "output": output.detach(),
+            "generated_output": generated_output.detach(),
         }
 
     def validation_step(self, batch, batch_idx):
@@ -73,7 +89,24 @@ class Dance2Music(LightningModule):
         self.log("val_loss", loss, batch_size=self.config.batch_size)
         self.log("val_acc", acc, batch_size=self.config.batch_size)
 
-        return {"output": output.detach()}
+        generated_output = None
+        if (
+            self.config.log_samples_every is not None
+            and (self.current_epoch + 1) % self.config.log_samples_every == 0
+        ):
+            generated_output = (
+                self.model.generate(
+                    audio,
+                    video,
+                    n_samples=self.config.generate_n_samples,
+                    temperature=self.config.generate_temperature,
+                )
+            )
+
+        return {
+            "output": output.detach(),
+            "generated_output": generated_output.detach(),
+        }
 
     def train_dataloader(self):
         return get_dataloader(
@@ -120,24 +153,33 @@ class Dance2Music(LightningModule):
 
         def scheduler_kwargs(scheduler: str):
             dataloader = self.train_dataloader()
-            n_updates = math.ceil(
+            n_updates_per_epoch = math.ceil(
                 len(dataloader) / self.config.accumulation_steps
             )
             sched = {
                 "OneCycleLR": {
                     "max_lr": self.config.max_learning_rate,
                     "epochs": self.config.n_epochs,
-                    "steps_per_epoch": n_updates,
+                    "steps_per_epoch": n_updates_per_epoch,
                     "pct_start": self.config.lr_pct_start,
                     "three_phase": True,
                 },
+                "CyclicLR": {
+                    "base_lr": self.config.base_learning_rate,
+                    "max_lr": self.config.max_learning_rate,
+                    "step_size_up": self.config.scheduler_step_size_up,
+                    "step_size_down": self.config.scheduler_step_size_down,
+                    "mode": self.config.scheduler_cyclic_mode,
+                    "gamma": self.config.scheduler_cyclic_gamma,
+                    "cycle_momentum": self.config.scheduler_cycle_momentum,
+                },
                 "StepLR": {
                     "step_size": self.config.scheduler_step_size,
-                    "gamma": self.config.scheduler_gamma,
+                    "gamma": self.config.scheduler_step_gamma,
                 },
                 "MultiStepLR": {
                     "milestones": self.config.scheduler_milestones,
-                    "gamma": self.config.scheduler_gamma,
+                    "gamma": self.config.scheduler_step_gamma,
                 },
             }
             if scheduler not in sched:
@@ -166,7 +208,6 @@ def train_model(
     dataset: str,
     config: TrainingConfig,
     logger_name: Optional[Literal["wandb"]] = None,
-    log_samples_every: Optional[int] = None,
     log_video: bool = False,
     wandb_project: Optional[str] = None,
 ):
@@ -180,11 +221,12 @@ def train_model(
             log_model="all",
         )
         logger.experiment.config.update(asdict(config))
+        logger.experiment.config.update({"dataset": dataset})
         callbacks.append(LearningRateMonitor(logging_interval="step"))
-        if log_samples_every:
+        if config.log_samples_every:
             callbacks.append(
                 LogSamplesCallback(
-                    log_every_n_epochs=log_samples_every,
+                    log_every_n_epochs=config.log_samples_every,
                     log_video=log_video,
                 )
             )
@@ -222,7 +264,6 @@ if __name__ == "__main__":
         args.dataset,
         config,
         logger_name=args.logger,
-        log_samples_every=args.log_samples_every,
         log_video=args.log_video,
         wandb_project=args.wandb_project,
     )

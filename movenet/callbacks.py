@@ -53,22 +53,6 @@ class LogSamplesCallback(Callback):
         if (trainer.current_epoch + 1) % self.log_every_n_epochs != 0:
             return
 
-        audio, video, *_ = batch
-
-        # need to do this manually since batch contains non-tensors
-        dtype = getattr(torch, f"float{pl_module.precision}")
-        audio = audio.type(dtype).to(pl_module.device)
-
-        if pl_module.config.use_video:
-            video = video.type(dtype).to(pl_module.device)
-
-        outputs["generated_output"] = pl_module.model.to(dtype).generate(
-            audio,
-            video,
-            n_samples=pl_module.config.generate_n_samples,
-            temperature=self.temperature,
-        )
-
         self.log_samples(
             "validation", trainer, pl_module, outputs, batch, batch_idx
         )
