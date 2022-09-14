@@ -63,12 +63,12 @@ class Dance2Music(LightningModule):
                     n_samples=self.config.generate_n_samples,
                     temperature=self.config.generate_temperature,
                 )
-            )
+            ).detach()
 
         return {
             "loss": loss,
             "output": output.detach(),
-            "generated_output": generated_output.detach(),
+            "generated_output": generated_output,
         }
 
     def validation_step(self, batch, batch_idx):
@@ -101,11 +101,11 @@ class Dance2Music(LightningModule):
                     n_samples=self.config.generate_n_samples,
                     temperature=self.config.generate_temperature,
                 )
-            )
+            ).detach()
 
         return {
             "output": output.detach(),
-            "generated_output": generated_output.detach(),
+            "generated_output": generated_output,
         }
 
     def train_dataloader(self):
