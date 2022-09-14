@@ -232,7 +232,8 @@ class WaveNet(nn.Module):
             else:
                 choices = F.softmax(output, dim=1).argmax(1, keepdims=True)
 
-            generated = torch.zeros_like(output).scatter_(1, choices, 1)
-            generated_audio[:, :, [i]] = generated
+            generated_audio[:, :, [i]] = torch.zeros_like(
+                output, dtype=audio.dtype
+            ).scatter_(1, choices, 1)
 
         return generated_audio
