@@ -62,7 +62,7 @@ class LogSamplesCallback(Callback):
         if pl_module.config.use_video:
             video = video.type(dtype).to(pl_module.device)
 
-        outputs["generated_output"] = pl_module.model.generate(
+        outputs["generated_output"] = pl_module.model.to(dtype).generate(
             audio,
             video,
             n_samples=pl_module.config.generate_n_samples,
