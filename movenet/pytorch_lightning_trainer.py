@@ -33,6 +33,22 @@ class Dance2Music(LightningModule):
     def forward(self, audio, video, **kwargs):
         return self.model(audio, video, **kwargs)
 
+    def generate(self, audio, video):
+        generated_output = None
+        if (
+            self.config.log_samples_every is not None
+            and (self.current_epoch + 1) % self.config.log_samples_every == 0
+        ):
+            generated_output = (
+                self.model.generate(
+                    audio,
+                    video,
+                    n_samples=self.config.generate_n_samples,
+                    temperature=self.config.generate_temperature,
+                )
+            ).detach()
+        return generated_output
+
     def training_step(self, batch, batch_idx):
         audio, video, contexts, fps, info = batch
 
@@ -51,24 +67,10 @@ class Dance2Music(LightningModule):
         self.log("train_loss", loss, batch_size=self.config.batch_size)
         self.log("train_acc", acc, batch_size=self.config.batch_size)
 
-        generated_output = None
-        if (
-            self.config.log_samples_every is not None
-            and (self.current_epoch + 1) % self.config.log_samples_every == 0
-        ):
-            generated_output = (
-                self.model.generate(
-                    audio,
-                    video,
-                    n_samples=self.config.generate_n_samples,
-                    temperature=self.config.generate_temperature,
-                )
-            ).detach()
-
         return {
             "loss": loss,
             "output": output.detach(),
-            "generated_output": generated_output,
+            "generated_output": self.generate(audio, video),
         }
 
     def validation_step(self, batch, batch_idx):
@@ -89,23 +91,9 @@ class Dance2Music(LightningModule):
         self.log("val_loss", loss, batch_size=self.config.batch_size)
         self.log("val_acc", acc, batch_size=self.config.batch_size)
 
-        generated_output = None
-        if (
-            self.config.log_samples_every is not None
-            and (self.current_epoch + 1) % self.config.log_samples_every == 0
-        ):
-            generated_output = (
-                self.model.generate(
-                    audio,
-                    video,
-                    n_samples=self.config.generate_n_samples,
-                    temperature=self.config.generate_temperature,
-                )
-            ).detach()
-
         return {
             "output": output.detach(),
-            "generated_output": generated_output,
+            "generated_output": self.generate(audio, video),
         }
 
     def train_dataloader(self):
@@ -197,9 +185,12 @@ class Dance2Music(LightningModule):
         optimizers = {"optimizer": optimizer}
 
         if self.config.scheduler is not None:
-            optimizers["lr_scheduler"] = getattr(
-                torch.optim.lr_scheduler, self.config.scheduler
-            )(optimizer, **scheduler_kwargs(self.config.scheduler))
+            optimizers["lr_scheduler"] = {
+                "scheduler": getattr(
+                    torch.optim.lr_scheduler, self.config.scheduler
+                )(optimizer, **scheduler_kwargs(self.config.scheduler)),
+                "interval": "step",
+            }
             print(f"using scheduler: {optimizers['lr_scheduler']}")
 
         return optimizers
@@ -237,6 +228,7 @@ def train_model(
         max_epochs=config.n_epochs,
         default_root_dir=config.model_output_path,
         gradient_clip_val=config.gradient_clipping,
+        accumulate_grad_batches=config.accumulation_steps,
         logger=logger,
         log_every_n_steps=1,
         num_sanity_val_steps=0,
