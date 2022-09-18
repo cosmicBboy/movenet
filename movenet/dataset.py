@@ -165,12 +165,7 @@ def read_video(
     use_video: bool,
     normalize_audio: bool,
 ):
-    video, audio, info = torchvision.io.read_video(
-        filepath,
-        pts_unit="pts",
-
-    )
-    # permute to: frames x channels x height x width
+    video, audio, info = torchvision.io.read_video(filepath, pts_unit="sec")
     info.update({
         "video_orig_dim": video.shape[0],
         "audio_orig_dim": audio.shape[1],
@@ -178,6 +173,7 @@ def read_video(
     if video.shape[0] == 0:
         return None, None, info
 
+    # permute to: frames x channels x height x width
     video = resize_video(video.permute(0, 3, 1, 2)) if use_video else None
     audio = one_hot_encode_audio(
         resample_audio(audio, info),
