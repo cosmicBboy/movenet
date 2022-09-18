@@ -26,6 +26,7 @@ class TrainingConfig:
 
     # training parameters
     batch_size: int = 3
+    val_batch_size: int = 3
     checkpoint_every: int = 25
     optimizer: str = "AdamW"
     learning_rate: float = 0.0001
@@ -39,6 +40,8 @@ class TrainingConfig:
     n_steps_per_epoch: Optional[int] = None
     use_video: bool = True
     gradient_clipping: Optional[float] = 0.0
+    batch_subsample_frac: Optional[float] = None
+    val_batch_subsample_frac: Optional[float] = None
 
     # sample generation
     generate_n_samples: Optional[int] = None
@@ -101,6 +104,7 @@ def config_from_args(args) -> TrainingConfig:
             stack_size=args.stack_size,
         ),
         batch_size=args.batch_size,
+        val_batch_size=args.val_batch_size,
         checkpoint_every=args.checkpoint_every,
         optimizer=args.optimizer,
         learning_rate=args.learning_rate,
@@ -127,6 +131,8 @@ def config_from_args(args) -> TrainingConfig:
         n_epochs=args.n_epochs,
         n_steps_per_epoch=args.n_steps_per_epoch,
         use_video=args.use_video,
+        batch_subsample_frac=args.batch_subsample_frac,
+        val_batch_subsample_frac=args.val_batch_subsample_frac,
         dist_backend=args.dist_backend,
         dist_port=args.dist_port,
         pretrained_model_path=(
@@ -144,6 +150,7 @@ def arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str)
     parser.add_argument("--batch_size", type=int, default=3)
+    parser.add_argument("--val_batch_size", type=int, default=3)
     parser.add_argument("--optimizer", type=str, default="AdamW")
     parser.add_argument("--learning_rate", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
@@ -189,6 +196,8 @@ def arg_parser() -> argparse.ArgumentParser:
         type=lambda x: bool(int(x)),
         default=True,
     )
+    parser.add_argument("--batch_subsample_frac", type=float, default=None)
+    parser.add_argument("--val_batch_subsample_frac", type=float, default=None)
     parser.add_argument("--gradient_clipping", type=float, default=0.0)
     parser.add_argument("--checkpoint_every", type=int, default=1)
     parser.add_argument("--input_channels", type=int, default=16)

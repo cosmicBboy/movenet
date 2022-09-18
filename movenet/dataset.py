@@ -1,11 +1,13 @@
 """Create dataset for modeling."""
 
 import logging
+import math
+import random
 from collections import Counter
 from functools import partial
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 try:
     from typing import TypedDict
@@ -51,6 +53,49 @@ class Example(NamedTuple):
     video: TensorType[float]
     audio: TensorType[float]
     info: Info
+
+
+
+def get_dataloader(
+    filepath,
+    input_channels: int,
+    batch_size: int = 64,
+    train: bool = True,
+    rank: int = 0,
+    world_size: int = 0,
+    use_video: bool = True,
+    normalize_audio: bool = True,
+    batch_subsample_frac: Optional[float] = None,
+    **kwargs,
+):
+    dataset = KineticsDataset(
+        filepath,
+        input_channels,
+        train=train,
+        use_video=use_video,
+        normalize_audio=normalize_audio,
+    )
+    sampler = None
+    if world_size > 1:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset,
+            rank=rank,
+            num_replicas=1 if not world_size else world_size,
+            shuffle=True
+        )
+        kwargs.pop("shuffle")
+        logger.info(f"DataLoader kwargs: {kwargs}")
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        collate_fn=partial(
+            make_batch,
+            use_video=use_video,
+            subsample_frac=batch_subsample_frac,
+        ),
+        sampler=sampler,
+        **kwargs
+    )
 
 
 class KineticsDataset(torch.utils.data.Dataset):
@@ -114,8 +159,17 @@ class KineticsDataset(torch.utils.data.Dataset):
         )
 
 
-def read_video(filepath, input_channels, use_video: bool, normalize_audio: bool):
-    video, audio, info = torchvision.io.read_video(filepath, pts_unit="sec")
+def read_video(
+    filepath,
+    input_channels,
+    use_video: bool,
+    normalize_audio: bool,
+):
+    video, audio, info = torchvision.io.read_video(
+        filepath,
+        pts_unit="pts",
+
+    )
     # permute to: frames x channels x height x width
     info.update({
         "video_orig_dim": video.shape[0],
@@ -126,46 +180,11 @@ def read_video(filepath, input_channels, use_video: bool, normalize_audio: bool)
 
     video = resize_video(video.permute(0, 3, 1, 2)) if use_video else None
     audio = one_hot_encode_audio(
-        resample_audio(audio), input_channels, normalize_audio,
+        resample_audio(audio, info),
+        input_channels,
+        normalize_audio,
     )
     return video, audio, info
-
-
-def get_dataloader(
-    filepath,
-    input_channels: int,
-    batch_size: int = 64,
-    train: bool = True,
-    rank: int = 0,
-    world_size: int = 0,
-    use_video: bool = True,
-    normalize_audio: bool = True,
-    **kwargs,
-):
-    dataset = KineticsDataset(
-        filepath,
-        input_channels,
-        train=train,
-        use_video=use_video,
-        normalize_audio=normalize_audio,
-    )
-    sampler = None
-    if world_size > 1:
-        sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset,
-            rank=rank,
-            num_replicas=1 if not world_size else world_size,
-            shuffle=True
-        )
-        kwargs.pop("shuffle")
-        logger.info(f"DataLoader kwargs: {kwargs}")
-    return torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        collate_fn=partial(make_batch, use_video),
-        sampler=sampler,
-        **kwargs
-    )
 
 
 class Batch:
@@ -188,7 +207,11 @@ class Batch:
         )
 
 
-def make_batch(use_video: bool, examples: List[Example]):
+def make_batch(
+    examples: List[Example],
+    use_video: bool = True,
+    subsample_frac: Optional[float] = None,
+):
     logger.debug(f"-----\nprocessing data: {[x.filepath for x in examples]}")
 
     audio, video, contexts, filepaths, info = [], [], [], [], []
@@ -207,9 +230,24 @@ def make_batch(use_video: bool, examples: List[Example]):
             f"Cannot process empty batch for instances {examples}."
         )
 
+    video_batch = torch.stack(video) if use_video else None
+    audio_batch = torch.stack(audio)
+
+    # subsample the batch so that we only train on a fraction of the audio/video
+    # samples to speed up training
+    if subsample_frac is not None:
+        audio_subsample_n = math.ceil(audio_batch.shape[-1] * subsample_frac)
+        start_pt = random.randint(0, audio_batch.shape[-1] - audio_subsample_n)
+        audio_batch = audio_batch[..., start_pt: start_pt + audio_subsample_n]
+
+        if video_batch is not None:
+            video_subsample_n = math.ceil(video_batch.shape[1] * subsample_frac)
+            start_pt = random.randint(0, video_batch.shape[1] - video_subsample_n)
+            video_batch = video_batch[:, start_pt: start_pt + video_subsample_n]
+
     return Batch(
-        torch.stack(audio),
-        torch.stack(video) if use_video else None,
+        audio_batch,
+        video_batch,
         contexts,
         filepaths,
         info,
@@ -217,7 +255,9 @@ def make_batch(use_video: bool, examples: List[Example]):
 
 
 def resample_audio(
-    audio: TensorType["channels", "frames"], freq=MAX_AUDIO_FRAMES
+    audio: TensorType["channels", "frames"],
+    info: dict,
+    freq=MAX_AUDIO_FRAMES,
 ) -> TensorType["channels", "frames"]:
     x = audio.mean(dim=0)
     resampled_audio = resample(x, x.shape[0], freq).reshape(1, -1)
@@ -291,12 +331,13 @@ if __name__ == "__main__":
         batch_size=8,
         shuffle=True,
         num_workers=args.num_workers,
+        use_video=False,
     )
     n_batches = len(dataloader)
     print(f"iterating through {n_batches} batches")
     writer = SummaryWriter()
     start = time.time()
-    for i, (audio, video, contexts, filepaths) in enumerate(dataloader, 1):
+    for i, (audio, video, contexts, filepaths, info) in enumerate(dataloader, 1):
         writer.add_scalar("n_steps", i, i)
         writer.add_scalar("percent_progress", i / n_batches, i)
         print(f"[batch {i}/{n_batches}]")

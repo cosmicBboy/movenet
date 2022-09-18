@@ -97,6 +97,10 @@ class Dance2Music(LightningModule):
         }
 
     def train_dataloader(self):
+        if self.config.batch_subsample_frac is not None:
+            print(f"using {self.config.batch_subsample_frac} of audio samples.")
+        else:
+            print("using full audio samples.")
         return get_dataloader(
             self.dataset_fp,
             input_channels=self.config.model_config.input_channels,
@@ -106,17 +110,19 @@ class Dance2Music(LightningModule):
             pin_memory=self.config.pin_memory,
             num_workers=self.config.num_workers,
             use_video=self.config.use_video,
+            batch_subsample_frac=self.config.batch_subsample_frac,
         )
 
     def val_dataloader(self):
         return get_dataloader(
             self.dataset_fp,
             input_channels=self.config.model_config.input_channels,
-            batch_size=self.config.batch_size,
+            batch_size=self.config.val_batch_size,
             train=False,
             pin_memory=self.config.pin_memory,
             num_workers=self.config.val_num_workers,
             use_video=self.config.use_video,
+            batch_subsample_frac=self.config.val_batch_subsample_frac,
         )
 
     def configure_optimizers(self):
