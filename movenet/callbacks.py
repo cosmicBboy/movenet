@@ -86,7 +86,7 @@ class LogSamplesCallback(Callback):
             pred_audio = torch.from_numpy(
                 librosa.resample(
                     pred_output.numpy(),
-                    orig_sr=pred_output.shape[0],
+                    orig_sr=MAX_AUDIO_FRAMES,
                     target_sr=orig_audio.shape[1],
                 )
             )
